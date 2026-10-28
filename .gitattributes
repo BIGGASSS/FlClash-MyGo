@@ -1,0 +1,11 @@
+assets/data/* binary
+*.png binary
+*.ttf binary
+*.ico binary
+*.metallib binary
+*.vt binary
+third_party/mygo/** -whitespace
+
+*.wasm binary
+third_party/quickjs/** -whitespace
+THIRD_PARTY_NOTICES -whitespace

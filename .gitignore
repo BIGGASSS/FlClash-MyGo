@@ -1,0 +1,6 @@
+/build/
+/dist/
+/.mygo/
+.DS_Store
+
+node_modules/

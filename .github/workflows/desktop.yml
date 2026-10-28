@@ -1,0 +1,61 @@
+name: Desktop
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.3'
+          cache-dependency-path: |
+            go.sum
+            core/go.sum
+      - run: sudo apt-get update && sudo apt-get install -y libgtk-3-0 libpango-1.0-0 libpangocairo-1.0-0 libfontconfig1 fonts-dejavu-core
+      - run: test -z "$(gofmt -l cmd internal assets/assets.go)"
+      - run: CGO_ENABLED=0 go vet ./...
+      - run: CGO_ENABLED=0 go test ./...
+      - run: CGO_ENABLED=0 go test -short ./ui ./internal/scene ./internal/raster
+        working-directory: third_party/mygo
+      - run: CGO_ENABLED=0 go build -tags with_gvisor -o ../build/flclash-core ./cmd/core
+        working-directory: core
+      - run: CGO_ENABLED=0 FLCLASH_TEST_CORE="$PWD/build/flclash-core" go test ./internal/coreclient ./internal/app -run 'TestRealCore|TestEngineLatestIntentAndFailedConfig' -v
+      - run: CGO_ENABLED=0 go test ./...
+        working-directory: core
+      - run: CGO_ENABLED=0 go vet . ./cmd/...
+        working-directory: core
+      - run: go test -race ./internal/store ./internal/coreclient
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [linux, darwin, windows]
+        arch: [amd64, arm64]
+    env:
+      GOOS: ${{ matrix.os }}
+      GOARCH: ${{ matrix.arch }}
+      CGO_ENABLED: '0'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27.3'
+          cache-dependency-path: |
+            go.sum
+            core/go.sum
+      - run: bash scripts/build.sh
+      - run: bash scripts/package.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: FlClash-MyGo-${{ matrix.os }}-${{ matrix.arch }}
+          path: dist/*

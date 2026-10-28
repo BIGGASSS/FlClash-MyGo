@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=FlClash MyGo
+Comment=FlClash desktop proxy client
+Exec=flclash %u
+Icon=flclash
+Categories=Network;
+Terminal=false
+MimeType=x-scheme-handler/flclash-mygo;x-scheme-handler/flclash;x-scheme-handler/clash;x-scheme-handler/clashmeta;

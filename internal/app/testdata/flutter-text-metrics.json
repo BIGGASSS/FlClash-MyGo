@@ -1,0 +1,74 @@
+[
+  {
+    "scale": 0.8,
+    "header": 54.0,
+    "cards": {
+      "loose": 90.0,
+      "standard": 74.0,
+      "compact": 58.0
+    },
+    "text": {
+      "display": 35.0,
+      "largeTitle": 33.0,
+      "title1": 27.0,
+      "pageTitle": 24.0,
+      "title2": 22.0,
+      "title3": 20.0,
+      "headline": 18.0,
+      "body": 18.0,
+      "callout": 17.0,
+      "subheadline": 16.0,
+      "footnote": 14.0,
+      "caption1": 13.0,
+      "caption2": 10.0
+    }
+  },
+  {
+    "scale": 1.0,
+    "header": 61.0,
+    "cards": {
+      "loose": 105.0,
+      "standard": 86.0,
+      "compact": 66.0
+    },
+    "text": {
+      "display": 44.0,
+      "largeTitle": 41.0,
+      "title1": 34.0,
+      "pageTitle": 30.0,
+      "title2": 28.0,
+      "title3": 25.0,
+      "headline": 22.0,
+      "body": 22.0,
+      "callout": 21.0,
+      "subheadline": 20.0,
+      "footnote": 18.0,
+      "caption1": 16.0,
+      "caption2": 13.0
+    }
+  },
+  {
+    "scale": 1.4,
+    "header": 75.0,
+    "cards": {
+      "loose": 133.0,
+      "standard": 109.0,
+      "compact": 81.0
+    },
+    "text": {
+      "display": 62.0,
+      "largeTitle": 57.0,
+      "title1": 48.0,
+      "pageTitle": 42.0,
+      "title2": 39.0,
+      "title3": 35.0,
+      "headline": 31.0,
+      "body": 31.0,
+      "callout": 29.0,
+      "subheadline": 28.0,
+      "footnote": 25.0,
+      "caption1": 22.0,
+      "caption2": 18.0
+    }
+  }
+]
