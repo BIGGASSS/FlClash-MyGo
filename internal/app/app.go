@@ -15,7 +15,6 @@ import (
 
 	"github.com/BIGGASSS/FlClash-MyGo/assets"
 	"github.com/BIGGASSS/FlClash-MyGo/internal/iconcache"
-	"github.com/BIGGASSS/FlClash-MyGo/internal/ipquality"
 	"github.com/BIGGASSS/FlClash-MyGo/internal/store"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
@@ -46,6 +45,8 @@ type App struct {
 	message                 string
 	working                 int
 	wantRunning             bool
+	onDemand                onDemandState
+	fontPicker              *fontPickerState
 	started                 time.Time
 	sidebarWidth            float32
 	sidebarReady            bool
@@ -101,6 +102,7 @@ type App struct {
 	serviceList             ui.ListState
 	serviceHostSet          bool
 	serviceProxied          bool
+	outbound                *outboundProbeState
 	ip                      string
 	organization            string
 	country                 string
@@ -134,6 +136,8 @@ type App struct {
 	profileDraft       store.Profile
 	profileDetail      profileDetailState
 	profileGrid        profileGridState
+	profileShare       profileShareState
+	profileGroupCounts map[string]*profileGroupCount
 	picker             dashboardPickerState
 	compactSheet       bool
 	sheetContentHeight float32
@@ -255,6 +259,9 @@ func (a *App) work(fn func() (func(), error), finally ...func()) {
 	}()
 }
 func (a *App) goPage(page string) {
+	if a.pushProfilePickerPage(page) {
+		return
+	}
 	if a.page != page {
 		a.editorLoadSerial++
 		if a.frameEnabled && navigationPrimary(page) {
@@ -269,6 +276,10 @@ func (a *App) goPage(page string) {
 	}
 }
 func (a *App) back() {
+	if a.profilePickerNavigation() != nil {
+		a.backProfilePicker()
+		return
+	}
 	a.editorLoadSerial++
 	if a.page == "collection" && a.document != nil && len(a.document.Path) > 0 {
 		a.document.Path = a.document.Path[:len(a.document.Path)-1]
@@ -287,8 +298,9 @@ func (a *App) apply() {
 	a.pendingApply = time.Time{}
 	a.markServiceRoutes()
 	a.save()
-	if a.engine != nil {
-		a.engine.Reconcile(a.cfg, a.wantRunning)
+	a.syncOnDemand()
+	if a.engine != nil && !a.safe {
+		a.engine.Reconcile(a.cfg, a.listenerIntent())
 	}
 }
 func (a *App) toggle() {
@@ -327,7 +339,10 @@ func (a *App) begin() {
 				a.started = time.Now()
 				a.outboundIP()
 			}
-			if status == "stopped" || status == "error" {
+			if status == "stopped" && a.wantRunning && a.onDemandSuspended() && a.started.IsZero() {
+				a.started = time.Now()
+			}
+			if status == "stopped" && !a.wantRunning || status == "error" {
 				a.started = time.Time{}
 			}
 			if status == "stopped" && previous != "stopped" {
@@ -361,7 +376,6 @@ func (a *App) begin() {
 	a.engine.Events = func(b Batch) {
 		a.update(func() {
 			if b.Refresh {
-				a.outboundIP()
 				a.markServiceRoutes()
 			}
 			for _, l := range b.Logs {
@@ -388,7 +402,8 @@ func (a *App) begin() {
 	}
 	a.holdCoreConnecting()
 	a.status = "connecting"
-	a.engine.Reconcile(a.cfg, a.wantRunning)
+	a.syncOnDemand()
+	a.engine.Reconcile(a.cfg, a.listenerIntent())
 	a.autoUpdate()
 	go func() {
 		ifaces, _ := net.Interfaces()
@@ -459,6 +474,7 @@ func (a *App) Run() error {
 			}
 			e.PreventDefault()
 			a.quitting = true
+			a.stopOnDemand()
 			a.cancelDelayTests()
 			if a.iconCache != nil {
 				a.iconCache.Close()
@@ -694,6 +710,8 @@ func (a *App) showJSON(title string, value any) {
 	a.detailOpen = true
 }
 func (a *App) openCode(title, purpose, text string) {
+	a.editorLoadSerial++
+	a.goPage("editor")
 	a.codeProvider = nil
 	if strings.HasPrefix(purpose, "provider:") && a.engine != nil {
 		a.codeProvider = &providerEditorContext{Profile: a.cfg.Active, Engine: a.engine, Revision: a.engine.Revision()}
@@ -707,49 +725,8 @@ func (a *App) openCode(title, purpose, text string) {
 	a.codePurpose = purpose
 	a.codeTitle = title
 	a.codeOriginal = text
-	a.goPage("editor")
 }
-func (a *App) outboundIP() {
-	if a.engine == nil || a.safe {
-		return
-	}
-	if a.checkIP {
-		a.ipPending = true
-		return
-	}
-	a.checkIP = true
-	e := a.engine
-	revision := e.Revision()
-	proxy := ""
-	if !a.wantRunning {
-		proxy = "DIRECT"
-	}
-	a.work(func() (func(), error) {
-		var result struct {
-			URL   string `json:"url"`
-			Body  string `json:"body"`
-			Error string `json:"error"`
-		}
-		err := e.Call("outboundIp", map[string]any{"proxy-name": proxy, "urls": ipquality.OutboundSources, "timeout": 6000}, &result)
-		return func() {
-			a.checkIP = false
-			if e.Revision() != revision || a.ipPending {
-				a.ipPending = false
-				a.outboundIP()
-				return
-			}
-			if err != nil || result.Error != "" {
-				return
-			}
-			info, parseErr := ipquality.ParseOutbound(result.URL, result.Body)
-			if parseErr != nil {
-				return
-			}
-			a.ip, a.country, a.organization = info.IP, info.Country, ""
-			a.lookupQuality(a.ip, false)
-		}, nil
-	})
-}
+func (a *App) outboundIP()                  { a.requestDashboardOutbound() }
 func jsonUnmarshal(b []byte, out any) error { return json.Unmarshal(b, out) }
 func (a *App) autoUpdate() {
 	if a.safe {

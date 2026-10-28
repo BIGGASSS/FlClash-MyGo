@@ -227,16 +227,21 @@ func (a *App) bottomNavigation(c *ui.Context) {
 	}
 	input.Children(func() {
 		bar := ui.Box(c.Key("navigation-dock")).Absolute().Left(8).Top(8).Width(barWidth).Height(height).Radius(999).Background(background).PassThrough().
-			Shadow(0, 8, 24, 0, ui.RGBA(0, 0, 0, .08*strength)).Shadow(0, 1, 3, 0, ui.RGBA(0, 0, 0, .04*strength)).Role(ui.RoleTabList).Label(a.t("navigationBarStyle"))
+			Role(ui.RoleTabList).Label(a.t("navigationBarStyle"))
+		useGlass := a.glassDockSurface(c, bar)
+		if !useGlass {
+			bar.Shadow(0, 8, 24, 0, ui.RGBA(0, 0, 0, .08*strength)).Shadow(0, 1, 3, 0, ui.RGBA(0, 0, 0, .04*strength))
+		}
 		growth := 1 + swell*min(float32(.25), 16/barWidth)
 		bar.Scale(growth*(1+float32(math.Abs(float64(pull)))/barWidth*.5), growth).Translate(pull, 0)
 		bar.Draw(func(p *ui.Painter, r ui.Rect) {
 			if highlightAlpha > 0 {
 				p.Fill(ui.Rect{X: r.X + 4 + layout.Inset + (highlight+.5)*layout.Pitch - layout.Lens/2, Y: r.Y + 4, W: layout.Lens, H: height - 8}, a.colors.text.Alpha(.08*min(max(highlightAlpha, 0), 1)), (height-8)/2)
 			}
-			p.Fill(ui.Rect{X: r.X + lens.X, Y: r.Y + lens.Y, W: lens.W, H: lens.H}, lensColor.Mix(a.colors.text, .08*min(max(lift, 0), 1)), lens.H/2)
+			p.Fill(ui.Rect{X: r.X + lens.X, Y: r.Y + lens.Y, W: lens.W, H: lens.H}, a.dockSelectionColor(lensColor, lift, useGlass), lens.H/2)
 		})
 		bar.Children(func() {
+			a.dockGlassLens(c, lens, lift, useGlass)
 			a.dockItems(c, pages, selected, layout, height, a.colors.muted, labelScale, true)
 			ui.Box(c).Absolute().Left(lens.X).Top(lens.Y).Width(lens.W).Height(lens.H).Radius(lens.H / 2).Clip().PassThrough().Children(func() {
 				ui.Box(c).Absolute().Left(-lens.X).Top(-lens.Y).Width(barWidth).Height(height).Scale(1+.16*lift, 1+.16*lift).TransformOrigin((lens.X+lens.W/2)/barWidth, .5).PassThrough().Children(func() {

@@ -12,6 +12,7 @@ import (
 	"github.com/BIGGASSS/FlClash-MyGo/internal/store"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
+	"github.com/egoist/mygo/ui/editor"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -256,8 +257,12 @@ func (a *App) exportProfile(p store.Profile) {
 }
 func (a *App) profileEdit(c *ui.Context) {
 	p := &a.profileDraft
-	ui.Scroll(c).Fill().Children(func() {
-		ui.Column(c).Padding(8, 16, 24+a.bottomNavigationInset(c), 16).Gap(22).Children(func() {
+	scroll := ui.Scroll(c).Fill()
+	if nav := a.profilePickerNavigation(); nav != nil {
+		scroll.TrackScroll(&nav.Scroll)
+	}
+	scroll.Children(func() {
+		ui.Column(c).Padding(8, 16, 24+a.profileEditorBottomInset(c), 16).Gap(22).Children(func() {
 			a.section(c, a.t("profile"), func() {
 				a.row(c, "profiles", a.t("name"), func() { ui.TextInput(c, &p.Name).Label(a.t("name")).Width(280) })
 				a.separator(c)
@@ -282,7 +287,13 @@ func (a *App) profileEdit(c *ui.Context) {
 			a.section(c, a.t("configuration"), func() {
 				a.row(c, "edit", a.t("script"), func() { a.scriptSelector(c) })
 				a.separator(c)
-				a.actionRow(c, "edit", a.t("edit"), func() { a.readProfileCode(p.ID, "profile") })
+				a.actionRow(c, "edit", a.t("edit"), func() {
+					purpose := "profile"
+					if a.profilePickerNavigation() != nil {
+						purpose = "profile-staged"
+					}
+					a.readProfileCode(p.ID, purpose)
+				})
 				a.separator(c)
 				a.actionRow(c, "layers", a.t("override"), func() {
 					value := map[string]any{}
@@ -318,6 +329,113 @@ func (a *App) profileEdit(c *ui.Context) {
 		})
 	})
 }
+func (a *App) profileSheetEditView(c *ui.Context) {
+	p, nav := &a.profileDraft, a.profilePickerNavigation()
+	ui.Scroll(c).Fill().TrackScroll(&nav.Scroll).Children(func() {
+		ui.Column(c).FillWidth().Padding(12, 16, 24, 16).Gap(22).Children(func() {
+			a.section(c, a.t("profile"), func() {
+				ui.Column(c).FillWidth().Padding(16).Gap(16).Children(func() {
+					ui.TextInput(c, &p.Name).FillWidth().Label(a.t("name"))
+					if nav.Initial.URL != "" {
+						ui.TextInput(c, &p.URL).FillWidth().Label(a.t("url"))
+						ui.TextInput(c, &p.AgeSecretKey).FillWidth().Password().Label("Age secret key")
+						enabled := p.UpdateInterval() > 0
+						a.boolRow(c, "", a.t("autoUpdate"), &enabled, func() { p.AutoUpdate = &enabled })
+						minutes := p.UpdatePeriod().Minutes()
+						if ui.NumberInput(c, &minutes, 1, 525600, 1).FillWidth().Label(a.t("autoUpdateInterval") + " (min)").Changed() {
+							p.IntervalMS = int64(minutes * float64(time.Minute/time.Millisecond))
+							p.Interval = int(minutes / 60)
+						}
+					}
+				})
+			})
+			a.section(c, a.t("file"), func() {
+				a.actionRow(c, "edit", a.t("edit"), func() { a.readProfileCode(p.ID, "profile-staged") })
+			})
+		})
+	})
+}
+
+func (a *App) profileEditorBottomInset(c *ui.Context) float32 {
+	if a.profilePickerNavigation() != nil {
+		return 0
+	}
+	return a.bottomNavigationInset(c)
+}
+
+// These routes reuse the native structured editors. The source's specialized
+// group/member/preset forms remain separate parity work.
+func (a *App) profileActionView(c *ui.Context, page string) {
+	p := &a.profileDraft
+	scroll := ui.Scroll(c).Fill()
+	if nav := a.profilePickerNavigation(); nav != nil {
+		scroll.TrackScroll(&nav.Scroll)
+	}
+	scroll.Children(func() {
+		ui.Column(c).FillWidth().Padding(8, 16, 24+a.profileEditorBottomInset(c), 16).Gap(22).Children(func() {
+			if page == "profileRename" {
+				a.section(c, a.t("rename"), func() {
+					ui.TextInput(c, &p.Name).FillWidth().Label(a.t("name")).AutoFocus()
+				})
+				return
+			}
+			if page == "profileExtend" {
+				a.section(c, a.t("extend"), func() {
+					a.row(c, "edit", a.t("script"), func() { a.scriptSelector(c) })
+					a.separator(c)
+					a.actionRow(c, "table", a.t("addedRules"), func() {
+						value := map[string]any{}
+						if p.Override != "" {
+							value, _ = store.ParseYAML([]byte(p.Override))
+						}
+						rules := value["rules"]
+						if rules == nil {
+							rules = []any{}
+						}
+						a.openCollection(a.t("addedRules"), "profile-added-rules", rules)
+					})
+					if p.Type != "custom" {
+						a.separator(c)
+						a.profileMatchTargetRow(c)
+					}
+					a.separator(c)
+					a.actionRow(c, "layers", a.t("override"), func() {
+						value := map[string]any{}
+						if p.Override != "" {
+							value, _ = store.ParseYAML([]byte(p.Override))
+						}
+						a.openCollection(a.t("override"), "profile-override", value)
+					})
+					a.separator(c)
+					a.actionRow(c, "edit", a.t("script"), func() { a.openCode(a.t("script"), "profile-script", p.Script) })
+				})
+				return
+			}
+			a.section(c, "", func() {
+				sections := []struct{ icon, key, section string }{
+					{"table", "rules", "rules"}, {"cloud", "providers", "proxy-providers"},
+					{"dns", "DNS", "dns"}, {"layers", "proxyGroups", "proxy-groups"},
+					{"proxies", "proxies", "proxies"},
+				}
+				for i, row := range sections {
+					if i > 0 {
+						a.separator(c)
+					}
+					a.actionRow(c, row.icon, a.t(row.key), func() { a.editProfileSection(p.ID, row.section) })
+				}
+			})
+			a.section(c, a.t("more"), func() {
+				for i, section := range []string{"rule-providers", "ntp", "sniffer", "tun"} {
+					if i > 0 {
+						a.separator(c)
+					}
+					a.actionRow(c, "settings", humanKey(section), func() { a.editProfileSection(p.ID, section) })
+				}
+			})
+		})
+	})
+}
+
 func decryptProfile(e *Engine, s *store.Store, b []byte, key string) ([]byte, error) {
 	text := strings.TrimSpace(string(b))
 	if !strings.HasPrefix(text, "age-encryption.org/") && !strings.HasPrefix(text, "-----BEGIN AGE ENCRYPTED FILE-----") {
@@ -346,57 +464,289 @@ func decryptProfile(e *Engine, s *store.Store, b []byte, key string) ([]byte, er
 func (a *App) actionRow(c *ui.Context, icon, label string, fn func()) {
 	ui.ButtonBase(c).FillWidth().OnClick(fn).Children(func() { a.row(c, icon, label, func() { glyph(c, "chevron").FontSize(18).TextColor(a.colors.muted) }) })
 }
+
+// Merge only editor-owned fields. Subscription refreshes and proxy selections
+// may have changed while this draft (or its asynchronous save) was open.
+func mergeProfileDraft(current, draft store.Profile) store.Profile {
+	current.Name, current.URL = draft.Name, draft.URL
+	current.Interval, current.IntervalMS, current.AutoUpdate = draft.Interval, draft.IntervalMS, draft.AutoUpdate
+	current.UserAgent, current.AgeSecretKey = draft.UserAgent, draft.AgeSecretKey
+	current.Override, current.Script, current.ScriptID = draft.Override, draft.Script, draft.ScriptID
+	current.MatchTarget = draft.MatchTarget
+	return current
+}
+
+// Apply only fields actually changed by this sheet, not stale copies of fields
+// changed by another editor, subscription refresh or proxy selection.
+func mergeProfileChanges(current, initial, draft store.Profile) store.Profile {
+	if initial.Name != draft.Name {
+		current.Name = draft.Name
+	}
+	if initial.URL != draft.URL {
+		current.URL = draft.URL
+	}
+	if initial.Interval != draft.Interval {
+		current.Interval = draft.Interval
+	}
+	if initial.IntervalMS != draft.IntervalMS {
+		current.IntervalMS = draft.IntervalMS
+	}
+	if !profileDraftEqual(store.Profile{AutoUpdate: initial.AutoUpdate}, store.Profile{AutoUpdate: draft.AutoUpdate}) {
+		current.AutoUpdate = draft.AutoUpdate
+	}
+	if initial.UserAgent != draft.UserAgent {
+		current.UserAgent = draft.UserAgent
+	}
+	if initial.AgeSecretKey != draft.AgeSecretKey {
+		current.AgeSecretKey = draft.AgeSecretKey
+	}
+	if initial.Override != draft.Override {
+		current.Override = draft.Override
+	}
+	if initial.Script != draft.Script {
+		current.Script = draft.Script
+	}
+	if initial.ScriptID != draft.ScriptID {
+		current.ScriptID = draft.ScriptID
+	}
+	if initial.MatchTarget != draft.MatchTarget {
+		current.MatchTarget = draft.MatchTarget
+	}
+	return current
+}
+
 func (a *App) saveProfile() {
 	if strings.TrimSpace(a.profileDraft.Name) == "" {
 		a.err = a.t("profileNameNullValidationDesc")
 		return
 	}
-	for i := range a.cfg.Profiles {
-		if a.cfg.Profiles[i].ID == a.editProfile {
-			a.cfg.Profiles[i] = a.profileDraft
-			a.apply()
-			a.back()
+	draft, owner := a.profileDraft, a.editorOwner()
+	nav := a.profilePickerNavigation()
+	if draft.ID == "" || draft.ID != a.editProfile || nav != nil && nav.Initial.ID != draft.ID {
+		a.err = a.t("editorContextChanged")
+		return
+	}
+	if nav != nil && nav.Page == "profileEdit" && nav.Initial.URL != "" {
+		if strings.TrimSpace(draft.URL) == "" {
+			a.err = a.t("profileUrlNullValidationDesc")
+			return
+		}
+		u, err := url.ParseRequestURI(draft.URL)
+		if err != nil || u.Hostname() == "" || u.Scheme != "https" && u.Scheme != "http" {
+			a.err = a.t("profileUrlInvalidValidationDesc")
 			return
 		}
 	}
-}
-func (a *App) readProfileCode(id, purpose string) {
-	s := a.store
-	serial, title := a.beginEditorLoad(), a.profileDraft.Name
-	a.work(func() (func(), error) {
-		b, err := os.ReadFile(s.ProfilePath(id))
-		return func() {
-			if a.editorLoadSerial == serial && a.editProfile == id {
-				a.openCode(title, purpose, string(b))
+	rename := a.page == "profileRename"
+	var revision uint64
+	var initial store.Profile
+	var source, original *string
+	if nav != nil {
+		if nav.Busy {
+			return
+		}
+		revision, initial, source, original = nav.Revision, nav.Initial, nav.Source, nav.SourceOriginal
+		rename = nav.Page == "profileRename"
+	}
+	done := func() {
+		next := store.Clone(a.cfg)
+		found := false
+		for i := range next.Profiles {
+			if next.Profiles[i].ID != draft.ID {
+				continue
 			}
-		}, err
+			found = true
+			if rename {
+				next.Profiles[i].Name = draft.Name
+			} else if nav != nil {
+				next.Profiles[i] = mergeProfileChanges(next.Profiles[i], initial, draft)
+			} else {
+				next.Profiles[i] = mergeProfileDraft(next.Profiles[i], draft)
+			}
+			break
+		}
+		if !found {
+			a.err = a.t("editorContextChanged")
+			return
+		}
+		// apply() cannot signal persistence errors to callers. Do not mark
+		// this draft saved or navigate until persistence succeeds.
+		if err := a.store.Save(next); err != nil {
+			a.err = err.Error()
+			return
+		}
+		if source != nil {
+			// Commit on the UI thread after validation, so both settings and
+			// source are still this intent's snapshots. Restore preferences on
+			// a rejected source write; neither the draft nor engine is advanced.
+			if err := writeProfileSource(a.store, draft.ID, []byte(*source), original); err != nil {
+				a.err = err.Error()
+				if rollbackErr := a.store.Save(a.cfg); rollbackErr != nil {
+					a.err += "; " + rollbackErr.Error()
+				}
+				return
+			}
+			delete(a.profileGroupCounts, draft.ID)
+		}
+		a.cfg = next
+		a.apply()
+		if a.editorOwner() != owner || a.editProfile != draft.ID || nav != nil && nav.Revision != revision {
+			return
+		}
+		if nav != nil {
+			nav.Initial = draft
+			if source != nil {
+				nav.SourceOriginal = source
+				if nav.Source == source {
+					nav.Source = nil
+				}
+			}
+			if profileDraftEqual(a.profileDraft, draft) && nav.Source == nil {
+				a.popProfilePickerPage()
+			}
+		} else if profileDraftEqual(a.profileDraft, draft) {
+			a.back()
+		}
+	}
+	if source == nil {
+		done()
+		return
+	}
+	text, e := *source, a.engine
+	nav.Busy = true
+	a.work(func() (func(), error) {
+		if _, err := store.ParseYAML([]byte(text)); err != nil {
+			return nil, err
+		}
+		if e != nil {
+			if err := e.Validate([]byte(text)); err != nil {
+				return nil, err
+			}
+		}
+		return done, nil
+	}, func() {
+		if nav.Revision == revision {
+			nav.Busy = false
+		}
 	})
 }
-func (a *App) editProfileSection(id, section string) {
-	s := a.store
-	serial := a.beginEditorLoad()
+
+func (a *App) readProfileCode(id, purpose string) {
+	title, read := a.profileDraft.Name, a.profileSourceReader(id)
+	a.loadProfileEditor(id, func() (any, error) { return read() }, func(value any) {
+		text := value.(string)
+		a.rememberProfileSource(id, text)
+		a.openCode(title, purpose, text)
+	})
+}
+
+func (a *App) loadProfileEditor(id string, load func() (any, error), open func(any)) {
+	serial, owner := a.beginEditorLoad(), a.editorOwner()
+	nav := a.profilePickerNavigation()
+	if nav != nil {
+		nav.Busy = true
+	}
 	a.work(func() (func(), error) {
-		b, e := os.ReadFile(s.ProfilePath(id))
-		if e != nil {
-			return nil, e
+		value, err := load()
+		return func() {
+			if a.editorLoadSerial != serial || a.editorOwner() != owner || a.editProfile != id {
+				return
+			}
+			if nav != nil {
+				nav.Busy = false
+			}
+			if err != nil {
+				a.err = err.Error()
+				return
+			}
+			open(value)
+		}, nil
+	})
+}
+
+func (a *App) editProfileSection(id, section string) {
+	read := a.profileSourceReader(id)
+	type sectionSnapshot struct {
+		Source string
+		Value  any
+	}
+	a.loadProfileEditor(id, func() (any, error) {
+		text, err := read()
+		if err != nil {
+			return nil, err
 		}
-		m, e := store.ParseYAML(b)
-		if e != nil {
-			return nil, e
+		m, err := store.ParseYAML([]byte(text))
+		if err != nil {
+			return nil, err
 		}
-		v := m[section]
-		if v == nil {
-			if strings.Contains(section, "providers") {
-				v = map[string]any{}
+		value := m[section]
+		if value == nil {
+			if strings.Contains(section, "providers") || section == "dns" || section == "ntp" || section == "sniffer" || section == "tun" {
+				value = map[string]any{}
 			} else {
-				v = []any{}
+				value = []any{}
+			}
+		}
+		return sectionSnapshot{text, value}, nil
+	}, func(value any) {
+		snapshot := value.(sectionSnapshot)
+		a.rememberProfileSource(id, snapshot.Source)
+		a.openCollection(humanKey(section), "section:"+section, snapshot.Value)
+		a.document.Profile, a.document.Source = id, &snapshot.Source
+	})
+}
+
+func (a *App) stageProfileCode(code *editor.State, owner, text string, version uint64) {
+	nav, e := a.profilePickerNavigation(), a.engine
+	if nav == nil || nav.Busy {
+		return
+	}
+	revision := nav.Revision
+	nav.Busy = true
+	a.work(func() (func(), error) {
+		if _, err := store.ParseYAML([]byte(text)); err != nil {
+			return nil, err
+		}
+		if e != nil {
+			if err := e.Validate([]byte(text)); err != nil {
+				return nil, err
 			}
 		}
 		return func() {
-			if a.editorLoadSerial == serial && a.editProfile == id {
-				a.openCollection(humanKey(section), "section:"+section, v)
+			if a.profilePickerNavigation() != nav || nav.Revision != revision {
+				return
 			}
+			nav.Source = &text
+			a.editorSaved(code, owner, text, version)
 		}, nil
+	}, func() {
+		if nav.Revision == revision {
+			nav.Busy = false
+		}
+	})
+}
+
+func (a *App) previewPickerProfile(p store.Profile) {
+	if a.picker.Open && a.picker.Kind == "profiles" {
+		a.beginProfilePickerNavigation()
+	}
+	a.openCode(p.Name, "preview", "")
+	a.code.ReadOnly, a.code.SoftWrap = true, true
+	a.code.RenderFindBar = a.codeFindBar
+	a.editProfile = p.ID
+	cfg, s := store.Clone(a.cfg), a.store
+	cfg.Active = p.ID
+	code := a.code
+	a.loadProfileEditor(p.ID, func() (any, error) {
+		raw, err := effectiveConfig(s, cfg)
+		if err != nil {
+			return nil, err
+		}
+		return store.YAML(raw)
+	}, func(value any) {
+		code.Buffer.Set(value.(string))
+		code.Buffer.MarkSaved()
+		a.codeOriginal = value.(string)
 	})
 }
 func (a *App) saveCode() {
@@ -404,8 +754,15 @@ func (a *App) saveCode() {
 		return
 	}
 	text := a.code.Buffer.String()
-	code, tab, version := a.code, a.navigationParent(), a.code.Buffer.Version()
+	code, tab, version := a.code, a.editorOwner(), a.code.Buffer.Version()
 	purpose := a.codePurpose
+	if a.code.ReadOnly {
+		return
+	}
+	if purpose == "profile-staged" {
+		a.stageProfileCode(code, tab, text, version)
+		return
+	}
 	if strings.HasPrefix(purpose, "provider:") {
 		if !a.codeProvider.valid(a) {
 			a.err = a.t("editorContextChanged")
@@ -419,7 +776,7 @@ func (a *App) saveCode() {
 	}
 	s := a.store
 	e := a.engine
-	id := a.editProfile
+	id, baseline := a.editProfile, a.codeOriginal
 	switch purpose {
 	case "document":
 		var value any
@@ -427,10 +784,12 @@ func (a *App) saveCode() {
 			a.err = err.Error()
 			return
 		}
-		if a.document != nil {
-			a.document.Value = value
+		if a.document == nil || a.document.Profile != "" && a.document.Profile != id {
+			a.err = a.t("editorContextChanged")
+			return
 		}
-		a.back()
+		a.document.Value = value
+		a.editorSaved(code, tab, text, version)
 		return
 	case "profile-override":
 		if strings.TrimSpace(text) != "" {
@@ -440,13 +799,17 @@ func (a *App) saveCode() {
 			}
 		}
 		a.profileDraft.Override = text
-		a.persistProfileDraft()
-		a.back()
+		if !a.persistProfileDraft() {
+			return
+		}
+		a.editorSaved(code, tab, text, version)
 		return
 	case "profile-script":
 		a.profileDraft.Script = text
-		a.persistProfileDraft()
-		a.back()
+		if !a.persistProfileDraft() {
+			return
+		}
+		a.editorSaved(code, tab, text, version)
 		return
 	case "global":
 		m, err := store.ParseYAML([]byte(text))
@@ -473,26 +836,30 @@ func (a *App) saveCode() {
 	}
 	a.work(func() (func(), error) {
 		b := []byte(text)
+		var expected *string
+		if purpose == "profile" || purpose == "raw" {
+			if _, err := os.Stat(s.ProfilePath(id)); err == nil {
+				expected = &baseline
+			} else if !os.IsNotExist(err) {
+				return nil, err
+			}
+		}
 		if strings.HasPrefix(purpose, "section:") {
 			section := strings.TrimPrefix(purpose, "section:")
 			original, err := os.ReadFile(s.ProfilePath(id))
 			if err != nil {
 				return nil, err
 			}
-			m, err := store.ParseYAML(original)
-			if err != nil {
-				return nil, err
-			}
+			snapshot := string(original)
+			expected = &snapshot
 			var value any
 			if err = yaml.Unmarshal(b, &value); err != nil {
 				return nil, err
 			}
-			m[section] = value
-			out, err := store.YAML(m)
+			b, err = store.PatchSection(original, section, value)
 			if err != nil {
 				return nil, err
 			}
-			b = []byte(out)
 		}
 		if _, err := store.ParseYAML(b); err != nil {
 			return nil, err
@@ -502,9 +869,9 @@ func (a *App) saveCode() {
 				return nil, err
 			}
 		}
-		if err := store.AtomicWrite(s.ProfilePath(id), b); err != nil {
+		if err := writeProfileSource(s, id, b, expected); err != nil {
 			return nil, err
 		}
-		return func() { a.apply(); a.editorSaved(code, tab, text, version) }, nil
+		return func() { delete(a.profileGroupCounts, id); a.apply(); a.editorSaved(code, tab, text, version) }, nil
 	})
 }

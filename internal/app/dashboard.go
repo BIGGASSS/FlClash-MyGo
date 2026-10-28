@@ -27,8 +27,7 @@ func (a *App) dashboard(c *ui.Context) {
 	}
 	statusHeight, modeHeight, infoHeight := float32(208), float32(64), float32(176)
 	bodyHeight := h - 68
-	_, fullHeight := c.Size()
-	compact := fullHeight/scale < 824 || (cols == 4 && (w-side)/scale < 1040)
+	compact := a.dashboardCompact(c)
 	if compact {
 		statusHeight, modeHeight, infoHeight = 176, 56, 152
 	}
@@ -179,7 +178,7 @@ func (a *App) dashboardCompact(c *ui.Context) bool {
 	if a.dashboardNarrow(c) {
 		return false
 	}
-	w, h := c.Size()
+	w, h := a.viewSize(c)
 	side := a.sidebarSize()
 	scale := max(a.cfg.Scale, 1)
 	width := (w - side) / scale
@@ -215,129 +214,154 @@ func (a *App) dashboardCard(c *ui.Context) ui.Element {
 	return card.Shadow(0, 0.5, 1, 0, ui.RGBA(0, 0, 0, 13.0/255)).Shadow(0, 2, 6, 0, ui.RGBA(0, 0, 0, 10.0/255)).Shadow(0, 12, 32, -6, ui.RGBA(0, 0, 0, 23.0/255))
 }
 func (a *App) statusCard(c *ui.Context) ui.Element {
-	return a.dashboardCard(c).Label(a.t("status")).Padding(16, 20).Clip().Children(func() {
-		accent := a.colors.accent
-		ui.Box(c).Absolute().Right(-50).Top(-30).Size(240, 250).Draw(func(p *ui.Painter, r ui.Rect) {
-			shape := cookie(r.X+r.W/2, r.Y+r.H/2, r.W/2, 12)
-			p.FillPath(&shape, accent.Alpha(0.09))
-		})
-		ui.Row(c).Gap(8).Children(func() {
-			a.header(c, "status", a.t("status"))
-			status := a.t("stopped")
-			color := a.colors.muted
-			if a.status == "running" {
-				status = "• " + a.t("running")
-				color = a.colors.success
-			} else if a.status == "connecting" {
-				status = a.t("connecting")
-				color = a.colors.warning
-			} else if a.status == "error" {
-				status = a.t("error")
-				color = a.colors.danger
-			}
-			a.chip(c, status, color)
-		})
-		ui.Row(c).Grow(1).Gap(16).Children(func() {
-			ui.Column(c).Grow(1).Gap(4).Children(func() {
-				ui.Row(c).Gap(12).Children(func() {
+	// current_outbound.dart: _OutboundMetrics. The button slot belongs to the
+	// full-height row, not to the IP row; the cells sit at the card's foot.
+	compact := a.dashboardCompact(c)
+	scale := max(a.cfg.Scale, 1)
+	ipTop, cellGap, badge, ipSize, ipLeading, padding := float32(10), float32(28), float32(48), float32(28), float32(34), float32(22)
+	button, slot, decoration, decorationTop := float32(104), float32(120), float32(290), float32(-87)
+	if compact {
+		ipTop, cellGap, badge, ipSize, ipLeading, padding = 8, 22, 40, 22, 28, 20
+		button, slot, decoration, decorationTop = 84, 100, 250, -75
+	}
+	ipWidth := 2*a.dashboardColumnWidth(c) + a.dashboardGap(c) - 2*padding - 16 - slot - badge - 12
+	card := a.dashboardCard(c).Label(a.t("status")).Gap(0).Clip()
+	target := float32(0)
+	if a.wantRunning {
+		target = 1
+	}
+	progress := card.AnimateWith("decoration", target, 450*time.Millisecond, ui.CubicBezier(0.175, 0.885, 0.32, 1.275))
+	card.Draw(func(p *ui.Painter, r ui.Rect) {
+		size := decoration * (1 + 0.12*progress)
+		box := ui.Rect{X: r.X + r.W + 64 - decoration - (size-decoration)/2, Y: r.Y + decorationTop - (size-decoration)/2, W: size, H: size}
+		color := a.colors.block.Mix(a.colors.card.Mix(a.colors.accent, 0.1), min(max(progress, 0), 1))
+		p.Clip(r, 32, func() { p.FillPath(dashboardShape("cookie12Sided", box, 0, progress*30), color) })
+	}).Children(func() {
+		ui.Row(c).Fill().Gap(16).Children(func() {
+			ui.Column(c).Grow(1).Basis(0).MinWidth(0).FillHeight().Gap(0).Children(func() {
+				ui.Row(c).FillWidth().Height(24 * scale).Gap(8).Children(func() {
+					glyph(c, "status").FontSize(18).TextColor(a.colors.muted)
+					ui.Text(c, a.t("status")).FontSize(fontSize(c, 13)).FixedLineHeight(a.textHeight(18)).FontWeight(600).TextColor(a.colors.muted).SingleLine()
+					status, color := a.t("stopped"), a.colors.muted
+					if a.wantRunning && a.onDemandSuspended() {
+						status, color = a.t("suspended"), a.colors.warning
+					} else if a.status == "running" {
+						status, color = a.t("running"), a.colors.success
+					} else if a.status == "connecting" {
+						status, color = a.t("connecting"), a.colors.warning
+					} else if a.status == "error" {
+						status, color = a.t("error"), a.colors.danger
+					}
+					a.dashboardChip(c, status, color, false, a.wantRunning)
+				})
+				ui.Row(c).FillWidth().Margin(ipTop, 0, 0, 0).Gap(12).Children(func() {
 					label := a.country
 					if label == "" {
 						label = "IP"
 					}
-					ui.ButtonBase(c.Key("refresh-ip")).Label(a.t("refresh")).Size(40, 40).Center().OnClick(func() {
+					ui.ButtonBase(c.Key("refresh-ip")).Label(a.t("refresh")).Size(badge, badge).Shrink(0).Center().OnClick(func() {
 						a.outboundIP()
 						if a.qualities[a.ip].Quality == nil {
 							a.lookupQuality(a.ip, true)
 						}
 					}).Draw(func(p *ui.Painter, r ui.Rect) {
-						shape := cookie(r.X+r.W/2, r.Y+r.H/2, r.W/2, 4)
-						p.FillPath(&shape, a.colors.inset)
-					}).Children(func() { ui.Text(c, label).FontSize(fontSize(c, 12)).Bold() })
+						p.FillPath(dashboardShape("clover4Leaf", r, 0, 0), a.colors.inset)
+					}).Children(func() { ui.Text(c, label).FontSize(fontSize(c, 13)).FontWeight(600) })
 					ip := a.ip
 					if ip == "" {
 						ip = "—"
 					}
-					ui.ButtonBase(c.Key("outbound-ip")).Label(a.shownIP(ip)).OnClick(func() { a.showQuality(a.ip) }).Children(func() {
-						ui.Column(c).Gap(4).Children(func() {
-							text := ui.Text(c, a.shownIP(ip)).FontSize(fontSize(c, 22)).Bold().SingleLine()
-							if a.cfg.HideIP {
-								text.Font("JetBrains Mono")
+					ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(4).Children(func() {
+						ui.ButtonBase(c.Key("outbound-ip")).Label(a.shownIP(ip)).FillWidth().Height(ipLeading * scale).OnClick(func() { a.showQuality(a.ip) }).Children(func() {
+							ui.Column(c).Fill().AlignItems(ui.Start).Justify(ui.Center).Children(func() {
+								family := ""
+								if a.cfg.HideIP {
+									family = "JetBrains Mono"
+								}
+								a.dashboardFitText(c, a.shownIP(ip), ipSize, ipLeading, ipWidth, family)
+							})
+						})
+						ui.Row(c).Height(24).FillWidth().Clip().Wrap().GapX(6).GapY(24).Children(func() {
+							if quality := a.qualities[a.ip].Quality; quality != nil {
+								a.dashboardChip(c, a.qualityType(quality.Type), a.colors.muted, false, false)
+								color := a.colors.muted
+								if quality.Level() == "good" {
+									color = a.colors.success
+								} else if quality.Level() == "risky" {
+									color = a.colors.warning
+								}
+								a.dashboardChip(c, a.t("ipQualityShort")+" "+a.qualityLabel(quality.Level()), color, false, false)
+							} else if a.qualityLoading(a.ip) {
+								ui.Text(c, a.t("loading")).FontSize(fontSize(c, 12)).TextColor(a.colors.muted)
 							}
-							a.qualityBadges(c, a.ip)
 						})
 					})
 				})
-				ui.Row(c).Gap(24).Margin(12, 0, 0, 0).Children(func() {
-					ui.Column(c).Gap(3).Children(func() {
-						ui.Text(c, a.t("runTime")).FontSize(fontSize(c, 12)).TextColor(a.colors.muted)
-						ui.Text(c, elapsed(a.started)).FontSize(fontSize(c, 15)).FontWeight(600)
-					})
-					ui.Column(c).Gap(3).Grow(1).Children(func() {
-						ui.Text(c, a.t("organization")).FontSize(fontSize(c, 12)).TextColor(a.colors.muted)
-						org := a.organization
-						if org == "" {
-							org = "—"
+				ui.Spacer(c)
+				ui.Row(c).FillWidth().Gap(cellGap).Children(func() {
+					for i, key := range []string{"runTime", "organization"} {
+						column := ui.Column(c).Gap(2)
+						if i > 0 {
+							column.Grow(1).Basis(0).MinWidth(0)
 						}
-						ui.Text(c, org).SingleLine().FontWeight(600).FontSize(fontSize(c, 14))
-					})
+						column.Children(func() {
+							ui.Text(c, a.t(key)).FontSize(fontSize(c, 12)).FixedLineHeight(a.textHeight(16)).TextColor(a.colors.muted).SingleLine()
+							value := a.organization
+							if i == 0 {
+								value = elapsed(a.started)
+							}
+							if value == "" {
+								value = "—"
+							}
+							ui.Text(c, value).FontSize(fontSize(c, 15)).FixedLineHeight(a.textHeight(20)).FontWeight(600).SingleLine()
+						})
+					}
 				})
 			})
-			label := a.t("start")
-			icon := "play"
-			if a.wantRunning {
-				label = a.t("stop")
-				icon = "pause"
-			}
-			button := ui.ButtonBase(c.Key("start-stop")).Label(label).Size(82, 82).Center().TextColor(a.colors.onAccent).Disabled(a.safe).OnClick(a.toggle)
-			button.Draw(func(p *ui.Painter, r ui.Rect) {
-				shape := cookie(r.X+r.W/2, r.Y+r.H/2, r.W/2, 12)
-				p.FillPath(&shape, accent)
-			}).Children(func() { glyphVariant(c, icon, true).FontSize(28) })
+			ui.Box(c).Width(slot).Shrink(0).FillHeight().Center().Children(func() { a.dashboardStartControl(c, button) })
 		})
 		if a.status == "running" {
 			c.After(time.Second)
 		}
 	})
-}
-func cookie(x, y, r float32, count int) ui.Path {
-	var path ui.Path
-	for i := 0; i <= 180; i++ {
-		theta := float64(i) * 2 * math.Pi / 180
-		rad := float64(r) * (0.96 + 0.04*math.Cos(float64(count)*theta))
-		px, py := x+float32(rad*math.Cos(theta)), y+float32(rad*math.Sin(theta))
-		if i == 0 {
-			path.MoveTo(px, py)
-		} else {
-			path.LineTo(px, py)
-		}
-	}
-	path.Close()
-	return path
+	return card
 }
 func (a *App) trafficCard(c *ui.Context, up bool) ui.Element {
 	value, total, peak := a.sample.Traffic.Down, a.sample.Total.Down, a.peak.Down
-	label, icon := a.t("download"), "down"
-	history := a.downHistory
-	color := a.colors.accent
+	label, icon := a.t("download"), "arrowDown"
+	history, color, ink := a.downHistory, a.colors.accent, a.colors.accent
 	if up {
 		value, total, peak = a.sample.Traffic.Up, a.sample.Total.Up, a.peak.Up
-		label, icon = a.t("upload"), "up"
-		history = a.upHistory
-		color = color.Alpha(0.48)
+		label, icon = a.t("upload"), "arrowUp"
+		history, color, ink = a.upHistory, a.colors.card.Mix(a.colors.accent, 0.45), a.colors.muted
 	}
-	return a.dashboardCard(c).Padding(20, 20, 0, 20).Gap(8).Clip().Children(func() {
-		ui.Row(c).Gap(6).Children(func() {
-			a.header(c, icon, label)
-			ui.Spacer(c)
-			ui.Text(c, a.t("peak")+" "+bytesText(peak)+"/s").FontSize(fontSize(c, 10)).TextColor(a.colors.muted).SingleLine()
+	// traffic.dart: SpeedCard. Chart height and bleed do not scale with text.
+	compact := a.dashboardCompact(c)
+	top, figure, leading, chart := float32(10), float32(40), float32(44), float32(88)
+	if compact {
+		top, figure, leading, chart = 6, 34, 41, 62
+	}
+	return a.dashboardCard(c).Label(label).Gap(0).Clip().Children(func() {
+		ui.Box(c).Absolute().Left(-3).Right(-3).Bottom(-3).Height(chart).Draw(func(p *ui.Painter, r ui.Rect) { plotTraffic(p, r, history, color) })
+		ui.Row(c).FillWidth().Height(24 * max(a.cfg.Scale, 1)).Gap(8).Children(func() {
+			glyph(c, icon).FontSize(18).TextColor(ink)
+			ui.Text(c, label).FontSize(fontSize(c, 13)).FixedLineHeight(a.textHeight(18)).FontWeight(600).TextColor(a.colors.muted).SingleLine()
+			ui.Text(c, a.t("peak")+" "+bytesText(peak)+"/s").Grow(1).Basis(0).MinWidth(0).TextAlign(ui.End).FontSize(fontSize(c, 12)).FixedLineHeight(a.textHeight(16)).TextColor(a.colors.muted).SingleLine()
 		})
 		parts := strings.SplitN(bytesText(value), " ", 2)
-		ui.Row(c).AlignItems(ui.Baseline).Gap(4).Children(func() {
-			ui.Text(c, parts[0]).FontSize(fontSize(c, 34)).Bold()
-			ui.Text(c, parts[1]+"/s").FontSize(fontSize(c, 14)).FontWeight(600).TextColor(a.colors.muted)
+		spans := []ui.Span{
+			{Text: parts[0], Size: fontSize(c, figure), Weight: 700, LetterSpacing: -0.02 * figure},
+			{Text: " " + parts[1] + "/s", Size: fontSize(c, 15), Weight: 600, Color: a.colors.muted},
+		}
+		// Flutter allows negative font leading (display is 40/44). MyGo
+		// clamps rich text to its font metrics, so center the measured line
+		// in the source's allocated line box instead of growing the column.
+		_, naturalHeight := c.MeasureText(0, spans...)
+		lineHeight := a.textHeight(leading)
+		ui.Box(c).Label(bytesText(value)+"/s").FillWidth().Height(lineHeight).Margin(top, 0, 0, 0).Children(func() {
+			ui.RichText(c, spans...).Absolute().Left(0).Right(0).Top((lineHeight - naturalHeight) / 2).Height(naturalHeight).SingleLine()
 		})
-		ui.Text(c, a.t("totalTraffic")+" "+bytesText(total)).FontSize(fontSize(c, 12)).TextColor(a.colors.muted)
-		ui.Box(c).Grow(1).FillWidth().Margin(0, -20).Draw(func(p *ui.Painter, r ui.Rect) { plotTraffic(p, r, history, color) })
+		ui.Text(c, a.t("totalTraffic")+" "+bytesText(total)).FontSize(fontSize(c, 12)).FixedLineHeight(a.textHeight(16)).TextColor(a.colors.muted).SingleLine().Margin(2, 0, 0, 0)
 	})
 }
 
@@ -388,70 +412,33 @@ func plotTraffic(p *ui.Painter, r ui.Rect, values []int64, color ui.Color) {
 	p.Clip(r, 0, func() { p.FillPath(&area, color.Alpha(0.14)); p.StrokePath(&line, 2, color) })
 }
 func (a *App) intranetCard(c *ui.Context) ui.Element {
-	return a.dashboardCard(c).Padding(16).Gap(8).Children(func() {
-		ui.Row(c).Children(func() {
-			a.header(c, "devices", a.t("intranetIP"))
-			ui.Spacer(c)
-			a.button(c, "copy", a.t("copy"), func() { c.Services().WriteClipboard(a.intranet) }).Padding(0).Background(ui.Transparent)
+	return a.dashboardCard(c).Label(a.t("intranetIP")).Gap(0).Children(func() {
+		a.dashboardHeader(c, "devices", a.t("intranetIP"), func() {
+			address := a.intranet
+			if store.Bool(a.cfg.Overrides["allow-lan"]) && address != "" {
+				address += ":" + number(store.Int(a.cfg.Overrides["mixed-port"]))
+			}
+			a.dashboardIconButton(c, "copy", a.t("copy"), func() { c.Services().WriteClipboard(address) }).Translate(8, 0).Disabled(address == "")
 		})
+		top := float32(10)
+		if a.dashboardCompact(c) {
+			top = 8
+		}
 		ip := a.intranet
 		if ip == "" {
-			ip = "—"
+			ip = a.t("noNetwork")
 		}
-		ui.Text(c, ip).FontSize(fontSize(c, 23)).Bold().SingleLine()
-		ui.Spacer(c)
-		ui.Row(c).Padding(8, 12).Radius(16).Background(a.colors.block).Children(func() {
-			ui.Column(c).Grow(1).Gap(1).Children(func() {
-				ui.Text(c, a.t("allowLan")).FontSize(fontSize(c, 14)).FontWeight(600)
-				enabled := store.Bool(a.cfg.Overrides["allow-lan"])
-				label := a.t("disabled")
-				if enabled {
-					label = a.t("enabled")
-				}
-				ui.Text(c, label).FontSize(fontSize(c, 11)).TextColor(a.colors.muted)
-			})
-			value := store.Bool(a.cfg.Overrides["allow-lan"])
-			if a.switchControl(c, &value, a.t("allowLan")).Changed() {
-				a.cfg.Overrides["allow-lan"] = value
-				a.apply()
-			}
+		// IntranetIpCard uses title2 in both desktop densities.
+		ui.Box(c).FillWidth().Height(28*max(a.cfg.Scale, 1)).Margin(top, 0, 0, 0).Justify(ui.Center).Children(func() {
+			a.dashboardFitText(c, ip, 22, 28, a.dashboardInfoWidth(c), "")
 		})
+		ui.Spacer(c)
+		a.dashboardLanRow(c)
 	})
 }
 func (a *App) profileCard(c *ui.Context) ui.Element {
-	return a.dashboardCard(c).Padding(16).Gap(8).OnClick(a.openProfileDetails).Focusable().Children(func() {
-		ui.Row(c).Children(func() {
-			a.header(c, "profiles", a.t("profile"))
-			ui.Spacer(c)
-			a.button(c, "chevron", a.messageText("details", map[string]any{"label": a.t("profile")}), a.openProfileDetails).Padding(0).Background(ui.Transparent)
-		})
-		p := a.store.ActiveProfile(a.cfg)
-		if p == nil {
-			ui.Text(c, a.t("nullProfileDesc")).FontSize(fontSize(c, 14)).TextColor(a.colors.muted)
-			ui.Spacer(c)
-			ui.Button(c, a.t("addProfile")).Radius(999).OnClick(func() { a.addOpen = true })
-			return
-		}
-		ui.Row(c).Children(func() {
-			ui.Text(c, p.Name).Bold().Grow(1).SingleLine()
-			if p.Expire > 0 {
-				days := int(time.Until(time.Unix(p.Expire, 0)).Hours() / 24)
-				ui.Textf(c, "%d d", days).FontSize(fontSize(c, 11)).TextColor(a.colors.muted)
-			}
-		})
-		ui.Spacer(c)
-		if p.Total > 0 {
-			fraction := float64(p.Upload+p.Download) / float64(p.Total)
-			ui.Row(c).Children(func() {
-				ui.Textf(c, "%.0f%%", 100*fraction).Bold().Grow(1)
-				ui.Text(c, bytesText(p.Upload+p.Download)+" / "+bytesText(p.Total)).FontSize(fontSize(c, 11)).TextColor(a.colors.muted)
-			})
-			ui.Box(c).Height(5).Radius(999).Background(a.colors.inset).Children(func() {
-				ui.Box(c).Height(5).WidthPercent(float32(min(fraction, 1) * 100)).Radius(999).Background(a.colors.accent)
-			})
-		} else {
-			ui.Text(c, p.Updated.Format("2006-01-02 15:04")).FontSize(fontSize(c, 12)).TextColor(a.colors.muted)
-		}
+	return a.dashboardCard(c).Label(a.t("profile")).Gap(0).OnClick(a.openProfileDetails).Focusable().Children(func() {
+		a.desktopProfileContent(c)
 	})
 }
 func (a *App) servicesCard(c *ui.Context) ui.Element {
@@ -486,7 +473,10 @@ func (a *App) servicesCard(c *ui.Context) ui.Element {
 func (a *App) memoryCard(c *ui.Context) ui.Element {
 	return a.dashboardCard(c).Label(a.t("memoryInfo")).Gap(0).Children(func() {
 		a.dashboardHeader(c, "memory", a.t("memoryInfo"), func() {
-			a.dashboardIconButton(c, "chevron", strings.ReplaceAll(a.t("details"), "{label}", a.t("memoryInfo")), func() { a.memoryOpen = true })
+			button := a.dashboardIconButton(c, "chevron", strings.ReplaceAll(a.t("details"), "{label}", a.t("memoryInfo")), func() { a.memoryOpen = true })
+			if !a.dashboardNarrow(c) {
+				button.Translate(8, 0)
+			}
 		})
 		gap := float32(6)
 		if a.dashboardNarrow(c) {

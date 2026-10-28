@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -16,6 +15,10 @@ type documentEditor struct {
 	Title         string
 	Purpose       string
 	Value         any
+	Original      string
+	Saving        bool
+	Profile       string
+	Source        *string
 	Path          []any
 	List          ui.ListState
 	AddOpen       bool
@@ -30,11 +33,12 @@ type documentEditor struct {
 }
 
 func (a *App) openCollection(title, purpose string, value any) {
+	a.editorLoadSerial++
+	a.goPage("collection")
 	b, _ := yaml.Marshal(value)
 	var clone any
 	_ = yaml.Unmarshal(b, &clone)
-	a.document = &documentEditor{Title: title, Purpose: purpose, Value: clone, NewKind: "text"}
-	a.goPage("collection")
+	a.document = &documentEditor{Title: title, Purpose: purpose, Value: clone, Original: string(b), NewKind: "text"}
 }
 func (d *documentEditor) current() any {
 	v := d.Value
@@ -381,10 +385,14 @@ func (d *documentEditor) editRule(index int, text string) {
 }
 func (a *App) saveDocument() {
 	d := a.document
-	if d == nil {
+	if d == nil || d.Saving {
 		return
 	}
 	purpose, value := d.Purpose, d.Value
+	owner := a.editorOwner()
+	serialized, _ := yaml.Marshal(value)
+	// Detach the worker snapshot from the form that remains editable.
+	_ = yaml.Unmarshal(serialized, &value)
 	if purpose == "library:proxies" {
 		list, ok := value.([]any)
 		if !ok {
@@ -416,25 +424,51 @@ func (a *App) saveDocument() {
 		a.back()
 		return
 	}
-	if purpose == "profile-override" {
+	if purpose == "profile-override" || purpose == "profile-added-rules" {
+		if purpose == "profile-added-rules" {
+			overrides := map[string]any{}
+			if a.profileDraft.Override != "" {
+				var err error
+				overrides, err = store.ParseYAML([]byte(a.profileDraft.Override))
+				if err != nil {
+					a.err = err.Error()
+					return
+				}
+			}
+			overrides["rules"] = value
+			value = overrides
+		}
 		text, err := store.YAML(value)
 		if err != nil {
 			a.err = err.Error()
 			return
 		}
 		a.profileDraft.Override = text
-		a.persistProfileDraft()
-		d.Path = nil
-		a.back()
+		if !a.persistProfileDraft() {
+			return
+		}
+		a.documentSaved(d, owner, string(serialized))
 		return
 	}
 	id, s, e := a.editProfile, a.store, a.engine
+	if d.Profile != "" && d.Profile != id {
+		a.err = a.t("editorContextChanged")
+		return
+	}
+	nav, stage := a.profilePickerNavigation(), a.pickerStagesProfile()
+	var revision uint64
+	if nav != nil {
+		revision = nav.Revision
+	}
+	read := a.profileSourceReader(id)
+	original := d.Source
+	d.Saving = true
 	a.work(func() (func(), error) {
-		b, err := os.ReadFile(s.ProfilePath(id))
+		text, err := read()
 		if err != nil {
 			return nil, err
 		}
-		patched, err := store.PatchSection(b, strings.TrimPrefix(purpose, "section:"), value)
+		patched, err := store.PatchSection([]byte(text), strings.TrimPrefix(purpose, "section:"), value)
 		if err != nil {
 			return nil, err
 		}
@@ -443,18 +477,58 @@ func (a *App) saveDocument() {
 				return nil, err
 			}
 		}
-		if err = store.AtomicWrite(s.ProfilePath(id), patched); err != nil {
+		if stage {
+			return func() {
+				if a.profilePickerNavigation() != nav || nav.Revision != revision || a.document != d {
+					return
+				}
+				staged := string(patched)
+				nav.Source, d.Source = &staged, &staged
+				a.documentSaved(d, owner, string(serialized))
+			}, nil
+		}
+		if err = writeProfileSource(s, id, patched, original); err != nil {
 			return nil, err
 		}
-		return func() { a.apply(); d.Path = nil; a.back() }, nil
-	})
-}
-func (a *App) persistProfileDraft() {
-	for i := range a.cfg.Profiles {
-		if a.cfg.Profiles[i].ID == a.editProfile {
-			a.cfg.Profiles[i] = a.profileDraft
+		return func() {
+			saved := string(patched)
+			d.Source = &saved
+			delete(a.profileGroupCounts, id)
 			a.apply()
-			return
+			a.documentSaved(d, owner, string(serialized))
+		}, nil
+	}, func() { d.Saving = false })
+}
+func (a *App) persistProfileDraft() bool {
+	if a.profileDraft.ID != a.editProfile || a.profileDraft.ID == "" {
+		a.err = a.t("editorContextChanged")
+		return false
+	}
+	if nav := a.profilePickerNavigation(); nav != nil && nav.Initial.ID != a.editProfile {
+		a.err = a.t("editorContextChanged")
+		return false
+	}
+	if a.pickerStagesProfile() {
+		// editorSaved/documentSaved returns this draft to its parent. That
+		// page, not a child Save button, owns the final persistence decision.
+		return true
+	}
+	next := store.Clone(a.cfg)
+	for i := range next.Profiles {
+		if next.Profiles[i].ID == a.editProfile {
+			next.Profiles[i] = mergeProfileDraft(next.Profiles[i], a.profileDraft)
+			if err := a.store.Save(next); err != nil {
+				a.err = err.Error()
+				return false
+			}
+			a.cfg = next
+			if nav := a.profilePickerNavigation(); nav != nil {
+				nav.Initial = a.profileDraft
+			}
+			a.apply()
+			return true
 		}
 	}
+	a.err = a.t("editorContextChanged")
+	return false
 }

@@ -49,3 +49,13 @@ export function palette(input){
  };
  return Object.fromEntries(Object.entries(colors).map(([k,v])=>[k,hex(v)]));
 }
+
+// lib/ui/liquid_glass.dart pill/regular tint and navigation_dock.dart platter.
+export function glassColors(input){
+ const colors=palette(input),dark=!!input.dark;
+ const source=Hct.fromInt((parseInt(input.seed.replace('#',''),16)|0xff000000)>>>0);
+ const scheme=input.style==='soft'?new SchemeTonalSpot(source,dark,0):input.style==='monochrome'?new SchemeMonochrome(source,dark,0):new SchemeContent(source,dark,0);
+ const card=parseInt(colors.card.slice(1),16)|0xff000000;
+ const tint=hex(tone(card,clamp(Hct.fromInt(card).tone+7,0,100)));
+ return {regularTint:dark?tint+'9e':'#fdfdfd8a',pillTint:dark?tint+'7a':'#f4f4f493',platter:hex(tone(C.secondary.getArgb(scheme),dark?4:90))+'d9'};
+}

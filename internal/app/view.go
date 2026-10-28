@@ -40,72 +40,81 @@ func (a *App) View(c *ui.Context) {
 		c.Toast(a.message)
 		a.message = ""
 	}
-	if c.Shortcut(ui.Cmd, ui.KeyLeft) && len(a.history) > 0 {
+	if !a.profileShare.Open && c.Shortcut(ui.Cmd, ui.KeyLeft) && (len(a.history) > 0 || a.profilePickerNavigation() != nil) {
 		a.back()
 	}
 	root := ui.Box(c).Fill().Background(a.colors.page).Children(func() {
-		ui.Row(c).Fill().Padding(a.frameHeight, 0, a.navigationReservedHeight(c), 0).Gap(0).AlignItems(ui.Stretch).Children(func() {
-			a.sidebar(c)
-			ui.Column(c).Grow(1).MinWidth(0).Gap(0).Children(func() {
-				a.titlebar(c)
-				pageKey := a.page
-				if a.frameEnabled {
-					pageKey = a.navigationParent() + "/" + a.page
-				}
-				ui.Column(c.Key(pageKey)).Grow(1).MinHeight(0).MinWidth(0).Children(func() {
-					switch a.page {
-					case "dashboard":
-						a.dashboard(c)
-					case "proxies":
-						a.proxiesView(c)
-					case "profiles":
-						a.profilesView(c)
-					case "connections", "requests", "dns", "logs":
-						a.records(c)
-					case "tools":
-						a.tools(c)
-					case "resources":
-						a.resources(c)
-					case "scripts":
-						a.scriptsView(c)
-					case "profileEdit":
-						a.profileEdit(c)
-					case "editor":
-						a.editorView(c)
-					case "collection":
-						a.collectionView(c)
-					case "theme":
-						a.themeView(c)
-					case "backup":
-						a.backupView(c)
-					case "hotkeys":
-						a.hotkeysView(c)
-					case "language":
-						a.languageView(c)
-					case "about":
-						a.aboutView(c)
-					case "services":
-						a.servicesView(c)
-					case "probe":
-						a.probeView(c)
-					default:
-						a.settingsView(c)
+		a.withPickerBackground(func() {
+			ui.Row(c).Fill().Padding(a.frameHeight, 0, a.navigationReservedHeight(c), 0).Gap(0).AlignItems(ui.Stretch).Children(func() {
+				a.sidebar(c)
+				ui.Column(c).Grow(1).MinWidth(0).Gap(0).Children(func() {
+					a.titlebar(c)
+					pageKey := a.page
+					if a.frameEnabled {
+						pageKey = a.navigationParent() + "/" + a.page
 					}
+					ui.Column(c.Key(pageKey)).Grow(1).MinHeight(0).MinWidth(0).Children(func() {
+						switch a.page {
+						case "dashboard":
+							a.dashboard(c)
+						case "proxies":
+							a.proxiesView(c)
+						case "profiles":
+							a.profilesView(c)
+						case "connections", "requests", "dns", "logs":
+							a.records(c)
+						case "tools":
+							a.tools(c)
+						case "resources":
+							a.resources(c)
+						case "scripts":
+							a.scriptsView(c)
+						case "profileEdit":
+							a.profileEdit(c)
+						case "profileCustom", "profileExtend", "profileRename":
+							a.profileActionView(c, a.page)
+						case "editor":
+							a.editorView(c)
+						case "collection":
+							a.collectionView(c)
+						case "theme":
+							a.themeView(c)
+						case "fontFamily":
+							a.fontPickerView(c)
+						case "backup":
+							a.backupView(c)
+						case "hotkeys":
+							a.hotkeysView(c)
+						case "language":
+							a.languageView(c)
+						case "about":
+							a.aboutView(c)
+						case "services":
+							a.servicesView(c)
+						case "probe":
+							a.probeView(c)
+						case "onDemand":
+							a.onDemandView(c)
+						default:
+							a.settingsView(c)
+						}
+					})
 				})
 			})
+			a.bottomNavigation(c)
 		})
-		a.bottomNavigation(c)
 	})
 	for _, path := range root.DroppedFiles() {
 		a.importFile(path)
 	}
 	a.sidebarOverlayView(c)
 	a.hotkeyDialog(c)
-	a.qualityDialog(c)
 	a.serviceSheet(c)
 	a.memorySheet(c)
 	a.profileDetailSheet(c)
 	a.dashboardPickerSheet(c)
+	a.fontPickerSheet(c)
+	a.qualityDialog(c)
 	a.modals(c)
 	if a.frameHeight > 0 {
 		ui.Overlay(c.Key("window-caption"), func() { a.captionBar(c) })
@@ -122,8 +131,10 @@ func (a *App) pageTitle() string {
 		return a.t("liveConnections")
 	case "dns":
 		return a.t("dnsQueries")
-	case "profileEdit":
+	case "profileEdit", "profileCustom", "profileRename":
 		return a.profileDraft.Name
+	case "profileExtend":
+		return a.t("extend")
 	case "editor":
 		return a.codeTitle
 	case "backup":
@@ -220,7 +231,7 @@ func (a *App) titlebar(c *ui.Context) {
 		case "collection":
 			a.button(c, "plus", a.t("add"), a.documentAdd)
 			a.button(c, "check", a.t("save"), a.saveDocument)
-		case "profileEdit":
+		case "profileEdit", "profileCustom", "profileExtend", "profileRename":
 			a.button(c, "check", a.t("save"), a.saveProfile)
 		case "resources":
 			a.button(c, "refresh", a.t("updateAll"), func() {
@@ -234,6 +245,9 @@ func (a *App) titlebar(c *ui.Context) {
 	})
 }
 func (a *App) modals(c *ui.Context) {
+	a.profileShareDialog(c)
+	a.onDemandDialog(c)
+	a.providerDialogs(c)
 	a.dialogBase(c.Key("add-dialog"), &a.addOpen, func(backdrop, panel ui.Element) {
 		backdrop.Background(ui.RGBA(0, 0, 0, 0.3))
 		panel.Width(520).MaxWidthPercent(90).Padding(28).Gap(18).Radius(34).Background(a.colors.card)
@@ -330,7 +344,7 @@ func (a *App) editorView(c *ui.Context) {
 		editor.View(c, a.code).Fill().Radius(20)
 		ui.Text(c, "YAML / JavaScript    ·    "+a.t("save")+"  ⌘/Ctrl S").FontSize(fontSize(c, 12)).TextColor(a.colors.muted)
 	})
-	if c.Shortcut(ui.Cmd, ui.KeyS) {
+	if a.picker.Navigation == nil && c.Shortcut(ui.Cmd, ui.KeyS) {
 		a.saveCode()
 	}
 }

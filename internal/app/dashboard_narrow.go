@@ -207,8 +207,11 @@ func (a *App) narrowStatusCard(c *ui.Context) {
 					label, color := a.t("notRunning"), a.colors.muted
 					if a.wantRunning {
 						label, color = a.t("running"), a.colors.success
+						if a.onDemandSuspended() {
+							label, color = a.t("suspended"), a.colors.warning
+						}
 					}
-					a.dashboardChip(c, label, color, false, a.wantRunning)
+					a.dashboardChip(c, label, color, false, a.wantRunning && !a.onDemandSuspended())
 				})
 				ui.Row(c).FillWidth().Margin(12, 0, 0, 0).Gap(12).Children(func() {
 					ui.ButtonBase(c).Label(a.t("refresh")).Size(48, 48).Center().OnClick(a.outboundIP).Draw(func(p *ui.Painter, r ui.Rect) { p.FillPath(dashboardShape("clover4Leaf", r, 0, 0), a.colors.chrome) }).Children(func() { ui.Text(c, a.country).FontSize(fontSize(c, 12)).FontWeight(600) })

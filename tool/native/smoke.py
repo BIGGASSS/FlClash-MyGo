@@ -31,7 +31,7 @@ if args.cpu:
     env['MYGO_GPU'] = '0'
 else:
     env.pop('MYGO_GPU', None)
-env.update(GDK_BACKEND='x11', XDG_CACHE_HOME=str(output/'cache'), XDG_CONFIG_HOME=str(output/'config'))
+env.update(GDK_BACKEND='x11', XDG_CACHE_HOME=str(output/'cache'), XDG_CONFIG_HOME=str(output/'config'), OMP_THREAD_LIMIT='1')
 
 
 def run(*cmd):
@@ -123,8 +123,13 @@ with tempfile.TemporaryDirectory(prefix='flclash-native-') as data, (output/'xvf
                 if region:
                     ocr_path = output/(name+'-ocr.png')
                     run('convert',str(path),'-crop',region,'+repage',str(ocr_path))
+                # Native text at logical 13–17 px is often misread at 1x.
+                # Scale only the OCR input; retain the actual window capture.
+                scaled = output/(name+'-ocr-2x.png')
+                run('convert',str(ocr_path),'-resize','200%',str(scaled))
+                ocr_path = scaled
                 text = ''
-                for mode in (['6','3','11'] if region else ['3','11']):
+                for mode in (['6','3','11'] if region else ['3','11','6']):
                     text += ' '+run('tesseract', str(ocr_path), 'stdout', '--psm', mode).lower()
                     text = re.sub(r'\s+', ' ', text)
                     compact = "".join(text.split())
@@ -160,19 +165,22 @@ with tempfile.TemporaryDirectory(prefix='flclash-native-') as data, (output/'xvf
             x11.XFlush(xdisplay)
 
         def text_box(path, words, left_of=None):
-            lines = run('tesseract', str(path), 'stdout', '--psm', '3', 'tsv').splitlines()[1:]
-            boxes = [line.split('\t', 11) for line in lines]
-            boxes = [box for box in boxes if len(box)==12 and box[11].strip()]
+            scaled = path.with_name(path.stem+'-locate-2x.png')
+            run('convert',str(path),'-resize','200%',str(scaled))
             wanted = words.lower().split()
-            for i in range(len(boxes)-len(wanted)+1):
-                group=boxes[i:i+len(wanted)]
-                if [box[11].lower() for box in group] != wanted:
-                    continue
-                x,y = int(group[0][6]), int(group[0][7])
-                if left_of is not None and x >= left_of:
-                    continue
-                end = int(group[-1][6])+int(group[-1][8])
-                return x,y,end-x,int(group[0][9])
+            for mode in ('3','11','6'):
+                lines = run('tesseract', str(scaled), 'stdout', '--psm', mode, 'tsv').splitlines()[1:]
+                boxes = [line.split('\t', 11) for line in lines]
+                boxes = [box for box in boxes if len(box)==12 and box[11].strip()]
+                for i in range(len(boxes)-len(wanted)+1):
+                    group=boxes[i:i+len(wanted)]
+                    if [box[11].lower() for box in group] != wanted:
+                        continue
+                    x,y = int(group[0][6]), int(group[0][7])
+                    if left_of is not None and x//2 >= left_of:
+                        continue
+                    end = int(group[-1][6])+int(group[-1][8])
+                    return x//2,y//2,(end-x)//2,int(group[0][9])//2
             raise RuntimeError('Cannot locate '+words)
 
         def text_click(path, words, left_of=None):
@@ -207,7 +215,7 @@ with tempfile.TemporaryDirectory(prefix='flclash-native-') as data, (output/'xvf
         click(24,58)
         wait_text('sidebar-laptop-overlay', ['Tools'], region='220x650+0+32')
         click(600,450)
-        wait_text('sidebar-laptop-dismissed', ['Dashboard'], absent=['Tools'], region='220x650+0+32')
+        wait_text('sidebar-laptop-dismissed', ['Dashboard'], absent=['Tools'], region='180x650+45+32')
         x11.XResizeWindow(xdisplay,int(window_id,16),560,800)
         x11.XSync(xdisplay,0)
         narrow = wait_text('dashboard-narrow', ['Network speed','Outbound mode'])
@@ -235,6 +243,8 @@ with tempfile.TemporaryDirectory(prefix='flclash-native-') as data, (output/'xvf
         dashboard = wait_text('dashboard-wide-return', ['Total traffic'], absent=['Edit dashboard'])
         text_click(dashboard, 'SmokeFixture')
         wait_text('profile-details', ['Last updated','Extend mode'])
+        # Header keyboard order is Close, then runtime preview.
+        press_key(b'Tab')
         press_key(b'Tab')
         press_key(b'Return')
         wait_text('profile-runtime-preview', ['allow-lan','dns'])

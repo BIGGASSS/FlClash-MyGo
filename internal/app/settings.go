@@ -335,6 +335,8 @@ func (a *App) generalSettings(c *ui.Context) {
 		a.separator(c)
 		a.boolRow(c, "", a.t("autoRun"), &a.cfg.AutoStart, a.save)
 		a.separator(c)
+		a.linkRow(c, "wifi", a.t("onDemand"), "onDemand")
+		a.separator(c)
 		a.boolRow(c, "", a.t("minimizeOnExit"), &a.cfg.CloseToTray, a.save)
 	})
 	a.section(c, a.t("requestsAndUpdates"), func() {
@@ -453,6 +455,8 @@ func (a *App) themeView(c *ui.Context) {
 				a.separator(c)
 				a.boolRow(c, "", a.t("pureBlack"), &a.cfg.PureBlack, a.save)
 				a.separator(c)
+				a.choiceSetting(c, "liquidGlass", &a.cfg.LiquidGlass, [][2]string{{"none", "none"}, {"standard", "standard"}, {"ultra", "ultra"}})
+				a.separator(c)
 				a.row(c, "layers", a.t("navigationBarStyle"), func() {
 					choice := a.t("floating")
 					if !a.cfg.FloatingNavigation {
@@ -485,23 +489,7 @@ func (a *App) themeView(c *ui.Context) {
 				})
 			})
 			a.section(c, a.t("fontSize"), func() {
-				a.row(c, "", a.t("fontFamily"), func() {
-					families := []string{a.t("auto")}
-					selected := a.cfg.FontFamily
-					if selected == "" {
-						selected = families[0]
-					}
-					for _, font := range ui.FontFamilies() {
-						families = append(families, font.Name)
-					}
-					if ui.Select(c, &selected, families).Width(240).Label(a.t("fontFamily")).Changed() {
-						a.cfg.FontFamily = selected
-						if selected == families[0] {
-							a.cfg.FontFamily = ""
-						}
-						a.save()
-					}
-				})
+				a.fontFamilySetting(c)
 				a.separator(c)
 				a.row(c, "", a.t("scale"), func() {
 					v := float64(a.cfg.Scale * 100)
@@ -552,6 +540,8 @@ func (a *App) backupView(c *ui.Context) {
 			a.section(c, a.t("local"), func() {
 				a.actionRow(c, "up", a.t("backup"), a.backupLocal)
 				a.separator(c)
+				a.actionRow(c, "up", a.t("backup")+" · FlClash (Flutter)", func() { a.backupLocalFormat(true) })
+				a.separator(c)
 				a.actionRow(c, "down", a.t("restore"), a.restoreLocal)
 			})
 			a.section(c, "WebDAV", func() {
@@ -568,27 +558,7 @@ func (a *App) backupView(c *ui.Context) {
 		})
 	})
 }
-func (a *App) backupLocal() {
-	cfg := store.Clone(a.cfg)
-	s := a.store
-	go func() {
-		path, err := mygo.Dialog.Save(mygo.SaveDialogOptions{Parent: a.window, Title: a.t("backup"), DefaultPath: "FlClash-MyGo.zip", Filters: []mygo.FileFilter{{Name: "Backup", Extensions: []string{"zip"}}}})
-		if path == "" || err != nil {
-			return
-		}
-		b, err := s.Backup(cfg)
-		if err == nil {
-			err = store.AtomicWrite(path, b)
-		}
-		a.update(func() {
-			if err != nil {
-				a.err = err.Error()
-			} else {
-				a.message = a.t("success")
-			}
-		})
-	}()
-}
+func (a *App) backupLocal() { a.backupLocalFormat(false) }
 func (a *App) restoreLocal() {
 	go func() {
 		paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: a.window, Title: a.t("restore"), Filters: []mygo.FileFilter{{Name: "Backup", Extensions: []string{"zip"}}}})
@@ -665,7 +635,7 @@ func (a *App) resources(c *ui.Context) {
 					a.row(c, "cloud", p.Name, func() {
 						ui.Textf(c, "%s · %d", p.Type, p.Count).TextColor(a.colors.muted).FontSize(fontSize(c, 13))
 						a.button(c, "refresh", a.t("update")+p.Name, func() { a.updateDetailProvider(p) })
-						a.button(c, "info", a.t("details")+p.Name, func() { a.showJSON(p.Name, p) })
+						a.button(c, "info", a.t("details")+p.Name, func() { a.providerInfo(p) })
 					})
 				}
 			})

@@ -1,0 +1,116 @@
+{
+  "sourceRevision": "7fd417fb9a9a277c6a9339a8ac87f907df7c25f7",
+  "workflowFlutterVersion": "3.47.6",
+  "actualFlutterVersion": "3.47.5",
+  "frameworkRevision": "6a19cca56475dbfba1478ee68d7bd0c2ef891da1",
+  "dartVersion": "3.13.4 (stable) (Tue Sep 15 01:01:15 2026 -0700) on \"linux_x64\"",
+  "sdkMismatch": true,
+  "fixtureSHA256": "26841a5c395cffc53411cec7405b7aa6ecf161d31fb3d4115ead6774b5f5a100",
+  "safeMode": true,
+  "httpAttempts": 0,
+  "results": {
+    "parser": {
+      "passed": true,
+      "elapsedMs": 175,
+      "files": {
+        "count": 9,
+        "sha256": {
+          "profiles/1.yaml": "eb501aab4d5a66c86eda8c88362dfdbc94317e7c71ed3330c31425cfb5c88a94",
+          "profiles/2.yaml": "eb501aab4d5a66c86eda8c88362dfdbc94317e7c71ed3330c31425cfb5c88a94",
+          "profiles/3.yaml": "eb501aab4d5a66c86eda8c88362dfdbc94317e7c71ed3330c31425cfb5c88a94",
+          "profiles/4.yaml": "627f456fa924861e955c722c591c1be57a419fab9258355c210f945d371af44e",
+          "scripts/5.js": "d4687fd179439aa3940a8c4a602ca870a1a130a824624ab7b086e6aac6dec4ef",
+          "scripts/11.js": "2a413c0578093440f8f625bf7e6c8f2a14ab38204f2db5babe3205012b285131",
+          "scripts/12.js": "2a8a09046da451832d3c348f54c4307375de44ef4379a4f79eb47aee1628d32d",
+          "providers/rules/6e6881bbc8ebb23443f03950108e276f": "d0ccb9623208e6a8631de16975c08fc04f6b0d0885b054ac97ca6ae7f0543f08",
+          "providers/rules/9c3ee250866fa5f73fec2fc0972be7da": "a76d3f5a051316b704ce1dcb936e0c8130c971796cf5e4943a0fe6b08ff5eab9"
+        }
+      }
+    },
+    "compatible-all": {
+      "passed": true,
+      "elapsedMs": 155,
+      "rowCounts": {
+        "clash_providers": 2,
+        "custom_proxies": 1,
+        "disabled_rules": 0,
+        "profiles": 4,
+        "proxy_dialers": 1,
+        "proxy_groups": 1,
+        "rules": 6,
+        "scripts": 3
+      },
+      "files": {
+        "count": 9,
+        "sha256": {
+          "profiles/1.yaml": "eb501aab4d5a66c86eda8c88362dfdbc94317e7c71ed3330c31425cfb5c88a94",
+          "profiles/2.yaml": "eb501aab4d5a66c86eda8c88362dfdbc94317e7c71ed3330c31425cfb5c88a94",
+          "profiles/3.yaml": "eb501aab4d5a66c86eda8c88362dfdbc94317e7c71ed3330c31425cfb5c88a94",
+          "profiles/4.yaml": "627f456fa924861e955c722c591c1be57a419fab9258355c210f945d371af44e",
+          "scripts/5.js": "d4687fd179439aa3940a8c4a602ca870a1a130a824624ab7b086e6aac6dec4ef",
+          "scripts/11.js": "2a413c0578093440f8f625bf7e6c8f2a14ab38204f2db5babe3205012b285131",
+          "scripts/12.js": "2a8a09046da451832d3c348f54c4307375de44ef4379a4f79eb47aee1628d32d",
+          "providers/rules/6e6881bbc8ebb23443f03950108e276f": "d0ccb9623208e6a8631de16975c08fc04f6b0d0885b054ac97ca6ae7f0543f08",
+          "providers/rules/9c3ee250866fa5f73fec2fc0972be7da": "a76d3f5a051316b704ce1dcb936e0c8130c971796cf5e4943a0fe6b08ff5eab9"
+        }
+      }
+    },
+    "override-all": {
+      "passed": true,
+      "elapsedMs": 57,
+      "rowCounts": {
+        "clash_providers": 2,
+        "custom_proxies": 1,
+        "disabled_rules": 0,
+        "profiles": 4,
+        "proxy_dialers": 1,
+        "proxy_groups": 1,
+        "rules": 6,
+        "scripts": 3
+      },
+      "files": {
+        "count": 9,
+        "sha256": {
+          "profiles/1.yaml": "eb501aab4d5a66c86eda8c88362dfdbc94317e7c71ed3330c31425cfb5c88a94",
+          "profiles/2.yaml": "eb501aab4d5a66c86eda8c88362dfdbc94317e7c71ed3330c31425cfb5c88a94",
+          "profiles/3.yaml": "eb501aab4d5a66c86eda8c88362dfdbc94317e7c71ed3330c31425cfb5c88a94",
+          "profiles/4.yaml": "627f456fa924861e955c722c591c1be57a419fab9258355c210f945d371af44e",
+          "scripts/5.js": "d4687fd179439aa3940a8c4a602ca870a1a130a824624ab7b086e6aac6dec4ef",
+          "scripts/11.js": "2a413c0578093440f8f625bf7e6c8f2a14ab38204f2db5babe3205012b285131",
+          "scripts/12.js": "2a8a09046da451832d3c348f54c4307375de44ef4379a4f79eb47aee1628d32d",
+          "providers/rules/6e6881bbc8ebb23443f03950108e276f": "d0ccb9623208e6a8631de16975c08fc04f6b0d0885b054ac97ca6ae7f0543f08",
+          "providers/rules/9c3ee250866fa5f73fec2fc0972be7da": "a76d3f5a051316b704ce1dcb936e0c8130c971796cf5e4943a0fe6b08ff5eab9"
+        }
+      }
+    },
+    "profiles-only": {
+      "passed": true,
+      "elapsedMs": 52,
+      "rowCounts": {
+        "clash_providers": 2,
+        "custom_proxies": 1,
+        "disabled_rules": 0,
+        "profiles": 4,
+        "proxy_dialers": 1,
+        "proxy_groups": 1,
+        "rules": 6,
+        "scripts": 3
+      },
+      "files": {
+        "count": 9,
+        "sha256": {
+          "profiles/1.yaml": "eb501aab4d5a66c86eda8c88362dfdbc94317e7c71ed3330c31425cfb5c88a94",
+          "profiles/2.yaml": "eb501aab4d5a66c86eda8c88362dfdbc94317e7c71ed3330c31425cfb5c88a94",
+          "profiles/3.yaml": "eb501aab4d5a66c86eda8c88362dfdbc94317e7c71ed3330c31425cfb5c88a94",
+          "profiles/4.yaml": "627f456fa924861e955c722c591c1be57a419fab9258355c210f945d371af44e",
+          "scripts/5.js": "d4687fd179439aa3940a8c4a602ca870a1a130a824624ab7b086e6aac6dec4ef",
+          "scripts/11.js": "2a413c0578093440f8f625bf7e6c8f2a14ab38204f2db5babe3205012b285131",
+          "scripts/12.js": "2a8a09046da451832d3c348f54c4307375de44ef4379a4f79eb47aee1628d32d",
+          "providers/rules/6e6881bbc8ebb23443f03950108e276f": "d0ccb9623208e6a8631de16975c08fc04f6b0d0885b054ac97ca6ae7f0543f08",
+          "providers/rules/9c3ee250866fa5f73fec2fc0972be7da": "a76d3f5a051316b704ce1dcb936e0c8130c971796cf5e4943a0fe6b08ff5eab9"
+        }
+      }
+    }
+  },
+  "limits": "Synthetic current-schema restore only; no app startup, core, script execution, MRS compilation, OS proxy/TUN or older-schema evidence."
+}

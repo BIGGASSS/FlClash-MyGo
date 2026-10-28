@@ -12,6 +12,7 @@ import (
 )
 
 type palette struct {
+	glassRegularTint, glassPillTint, glassPlatter                                                                           ui.Color
 	secondaryContainer, onSecondaryContainer                                                                                ui.Color
 	outline, successContainer, onSuccessContainer, warningContainer, onWarningContainer, dangerContainer, onDangerContainer ui.Color
 	page, card, block, inset, chrome, text, muted, accent, onAccent, success, warning, danger, onDanger, line               ui.Color
@@ -32,6 +33,15 @@ func (a *App) theme(c *ui.Context) {
 	p := palette{dark: dark}
 	for key, dst := range map[string]*ui.Color{"page": &p.page, "card": &p.card, "block": &p.block, "inset": &p.inset, "chrome": &p.chrome, "text": &p.text, "muted": &p.muted, "accent": &p.accent, "onAccent": &p.onAccent, "secondaryContainer": &p.secondaryContainer, "onSecondaryContainer": &p.onSecondaryContainer, "success": &p.success, "warning": &p.warning, "danger": &p.danger, "onDanger": &p.onDanger, "line": &p.line, "outline": &p.outline, "successContainer": &p.successContainer, "onSuccessContainer": &p.onSuccessContainer, "warningContainer": &p.warningContainer, "onWarningContainer": &p.onWarningContainer, "dangerContainer": &p.dangerContainer, "onDangerContainer": &p.onDangerContainer} {
 		*dst = ui.Hex(colors[key])
+	}
+	if a.cfg.LiquidGlass == "standard" || a.cfg.LiquidGlass == "ultra" {
+		glassColors, err := colortheme.GlassColors(a.cfg.Accent, a.cfg.ColorStyle, dark, a.cfg.PureBlack)
+		if err != nil {
+			glassColors, _ = colortheme.GlassColors("#007aff", "vivid", dark, false)
+		}
+		p.glassRegularTint = ui.Hex(glassColors["regularTint"])
+		p.glassPillTint = ui.Hex(glassColors["pillTint"])
+		p.glassPlatter = ui.Hex(glassColors["platter"])
 	}
 	a.colors = p
 	t := *ui.LightTheme()
@@ -131,7 +141,7 @@ func (a *App) button(c *ui.Context, icon, label string, action func()) ui.Elemen
 		b.Background(a.colors.inset)
 	}
 	b.Children(func() { glyph(c, icon).FontSize(21) })
-	return b
+	return a.glassButton(c, b)
 }
 func (a *App) header(c *ui.Context, icon, label string) {
 	ui.Row(c).Gap(8).Children(func() {

@@ -111,6 +111,7 @@ type LogEntry struct {
 	Time    time.Time `json:"time"`
 }
 type Service struct {
+	request      uint64
 	Name         string     `json:"name"`
 	Status       string     `json:"status"`
 	Region       string     `json:"region"`

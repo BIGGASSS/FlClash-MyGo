@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/egoist/mygo/ui"
@@ -77,16 +76,26 @@ func (a *App) serviceValue(id string) *Service {
 }
 
 func (a *App) markServiceRoutes() {
+	a.markOutboundRoutes()
 	a.serviceRouteRev++
-	a.serviceRouteDue = time.Now().Add(1500 * time.Millisecond)
+	if a.serviceRouteDue.IsZero() {
+		a.serviceRouteDue = time.Now().Add(1500 * time.Millisecond)
+	}
 }
 
 func (a *App) refreshServices(targets []serviceTarget) {
-	if a.engine == nil || a.safe || len(targets) == 0 {
+	if a.engine == nil || a.safe || !a.probeVisible() || len(targets) == 0 {
+		return
+	}
+	s := a.syncOutboundOwner()
+	owner, routeRevision := s.owner, a.serviceRouteRev
+	if !a.ownsProbe(owner) {
 		return
 	}
 	if a.servicePending == nil {
 		a.servicePending = map[string]uint64{}
+	}
+	if a.serviceLast == nil {
 		a.serviceLast = map[string]time.Time{}
 	}
 	names := []string{}
@@ -102,18 +111,19 @@ func (a *App) refreshServices(targets []serviceTarget) {
 	if len(names) == 0 {
 		return
 	}
-	e, revision, proxied, routeRevision := a.engine, a.engine.Revision(), a.wantRunning, a.serviceRouteRev
 	proxy := ""
-	if !proxied {
+	if !owner.proxied {
 		proxy = "DIRECT"
 	}
+	ctx, cancel := context.WithTimeout(owner.engine.ctx, 65*time.Second)
+	s.serviceJobs[serial] = cancel
 	a.work(func() (func(), error) {
-		ctx, cancel := context.WithTimeout(e.ctx, 65*time.Second)
-		defer cancel()
 		var results []Service
-		err := e.CallContext(ctx, "serviceCheck", map[string]any{"proxy-name": proxy, "names": names, "timeout": 10000}, &results)
+		err := owner.call(ctx, "serviceCheck", map[string]any{"proxy-name": proxy, "names": names, "timeout": 10000}, &results)
 		return func() {
-			if e.Revision() != revision || a.wantRunning != proxied {
+			defer cancel()
+			delete(s.serviceJobs, serial)
+			if !a.ownsProbe(owner) || ctx.Err() == context.Canceled {
 				a.finishServices(names, serial, nil, true)
 				a.markServiceRoutes()
 				return
@@ -145,6 +155,7 @@ func (a *App) finishServices(names []string, serial uint64, results []Service, s
 				break
 			}
 		}
+		value.request = serial
 		if current := a.serviceValue(name); current != nil {
 			*current = value
 		} else {
@@ -154,11 +165,12 @@ func (a *App) finishServices(names []string, serial uint64, results []Service, s
 }
 
 func (a *App) watchServices(c *ui.Context) {
-	if a.safe || a.engine == nil || a.page != "dashboard" || (a.window != nil && !a.window.IsVisible()) {
+	defer a.watchOutbound(c)
+	if a.safe || a.engine == nil || a.quitting || a.page != "dashboard" && !a.serviceOpen || (a.window != nil && !a.window.IsVisible()) {
 		return
 	}
-	if !a.serviceHostSet || a.serviceProxied != a.wantRunning {
-		a.serviceHostSet, a.serviceProxied = true, a.wantRunning
+	if !a.serviceHostSet || a.serviceProxied != a.listenerIntent() {
+		a.serviceHostSet, a.serviceProxied = true, a.listenerIntent()
 		a.services = nil
 		a.servicePending = map[string]uint64{}
 		a.serviceLast = map[string]time.Time{}
@@ -170,6 +182,9 @@ func (a *App) watchServices(c *ui.Context) {
 		} else if !a.serviceRouteRun {
 			a.verifyServiceRoutes()
 		}
+	}
+	if a.page != "dashboard" {
+		return
 	}
 	shown := a.dashboardServiceTargets(c)
 	var missing []serviceTarget
@@ -185,50 +200,77 @@ func (a *App) watchServices(c *ui.Context) {
 	a.refreshServices(missing)
 }
 
+type serviceRouteIdentity struct {
+	name    string
+	epoch   uint64
+	checked int64
+	request uint64
+}
+
 func (a *App) verifyServiceRoutes() {
-	a.serviceRouteDue = time.Time{}
-	var names []string
-	var routes [][]routeHit
-	var epochs []uint64
-	var checkedAt []int64
-	for _, value := range a.services {
-		if a.servicePending[value.Name] == 0 {
-			names, routes, epochs = append(names, value.Name), append(routes, value.Hits), append(epochs, value.CoreEpoch)
-			checkedAt = append(checkedAt, value.CheckedAt)
-		}
-	}
-	if len(names) == 0 {
+	if a.engine == nil || a.safe || !a.probeVisible() || a.serviceRouteRun || !a.ownsProbe(a.probeOwner()) {
 		return
 	}
-	e, revision := a.engine, a.serviceRouteRev
-	a.serviceRouteRun = true
-	a.work(func() (func(), error) {
-		var checked struct {
-			CoreEpoch    uint64 `json:"core-epoch"`
-			RouteVersion uint64 `json:"route-version"`
-			Held         []bool `json:"held"`
+	s := a.syncOutboundOwner()
+	a.serviceRouteDue = time.Time{}
+	var identities []serviceRouteIdentity
+	var routes [][]routeHit
+	for _, value := range a.services {
+		if a.servicePending[value.Name] == 0 {
+			identities = append(identities, serviceRouteIdentity{value.Name, value.CoreEpoch, value.CheckedAt, value.request})
+			routes = append(routes, slices.Clone(value.Hits))
 		}
-		err := e.Call("checkRoutes", map[string]any{"routes": routes}, &checked)
+	}
+	if len(identities) == 0 {
+		return
+	}
+	owner, revision := a.probeOwner(), a.serviceRouteRev
+	a.serviceRouteRun = true
+	s.serviceVerify++
+	run := s.serviceVerify
+	ctx, cancel := context.WithTimeout(owner.engine.ctx, 10*time.Second)
+	s.serviceVerifyStop = cancel
+	a.work(func() (func(), error) {
+		defer cancel()
+		var checked routeCheck
+		err := owner.call(ctx, "checkRoutes", map[string]any{"routes": routes}, &checked)
 		return func() {
+			if s.serviceVerify != run {
+				return
+			}
+			s.serviceVerifyStop = nil
 			a.serviceRouteRun = false
-			if revision != a.serviceRouteRev {
+			if !a.ownsProbe(owner) || revision != a.serviceRouteRev {
+				a.markServiceRoutes()
 				return
 			}
 			if err != nil {
 				a.serviceRouteDue = time.Now().Add(5 * time.Second)
 				return
 			}
-			a.applyServiceRouteCheck(names, epochs, checkedAt, checked.Held, checked.CoreEpoch, checked.RouteVersion)
+			if s.routeSynced && checked.olderThan(s.routeEpoch, s.routeVersion) {
+				a.serviceRouteDue = time.Now().Add(300 * time.Millisecond)
+				return
+			}
+			s.rememberRoute(checked)
+			a.applyServiceRouteCheck(identities, checked.Held, checked.CoreEpoch, checked.RouteVersion)
 		}, nil
 	})
 }
 
-func (a *App) applyServiceRouteCheck(names []string, epochs []uint64, checkedAt []int64, held []bool, epoch, version uint64) {
-	for i, name := range names {
-		if value := a.serviceValue(name); value == nil || a.servicePending[name] != 0 || value.CheckedAt != checkedAt[i] {
+func (a *App) applyServiceRouteCheck(identities []serviceRouteIdentity, held []bool, epoch, version uint64) {
+	for i, identity := range identities {
+		name := identity.name
+		if value := a.serviceValue(name); value == nil || a.servicePending[name] != 0 || value.CheckedAt != identity.checked || value.request != identity.request {
 			continue
 		}
-		if i >= len(held) || !held[i] || epochs[i] != epoch {
+		if value := a.serviceValue(name); epoch < value.CoreEpoch || epoch == value.CoreEpoch && version < value.RouteVersion {
+			// The check was stamped before this answer or a newer check.
+			// Neither its held bit nor its older version can supersede it.
+			a.serviceRouteDue = time.Now().Add(300 * time.Millisecond)
+			continue
+		}
+		if i >= len(held) || !held[i] || identity.epoch != epoch {
 			a.services = slices.DeleteFunc(a.services, func(value Service) bool { return value.Name == name })
 		} else if value := a.serviceValue(name); value != nil {
 			value.RouteVersion = version
@@ -271,7 +313,10 @@ func (a *App) serviceStatus(id string, delay bool) (string, ui.Color) {
 	return a.t(key), color
 }
 
-func (a *App) openServices() { a.serviceOpen, a.serviceManage = true, false }
+func (a *App) openServices() {
+	a.serviceOpen, a.serviceManage = true, false
+	a.outboundState().qualityFromService = false
+}
 
 func (a *App) sideSheet(c *ui.Context, key string, open *bool, content func()) {
 	a.dialogBase(c.Key(key), open, func(backdrop, panel ui.Element) {
@@ -282,6 +327,11 @@ func (a *App) sideSheet(c *ui.Context, key string, open *bool, content func()) {
 }
 
 func (a *App) serviceSheet(c *ui.Context) {
+	// The nested quality page replaces the service page, not a second modal
+	// underneath it. Closing/back returns to the unchanged cached service rows.
+	if a.qualityOpen && a.outbound != nil && a.outbound.qualityFromService {
+		return
+	}
 	a.sideSheet(c, "services", &a.serviceOpen, func() {
 		if a.serviceManage {
 			a.sheetHeader(c, a.t("serviceManage"), "back", a.t("back"), func() { a.serviceManage = false }, nil)
@@ -311,20 +361,7 @@ func (a *App) serviceRows(c *ui.Context) {
 							a.serviceBadge(c, target, true)
 							ui.Column(c).Grow(1).MinWidth(0).Gap(0).Children(func() {
 								ui.Text(c, target.Label).FontSize(fontSize(c, 17)).SingleLine()
-								var route []string
-								if value := a.serviceValue(target.ID); value != nil {
-									if value.Region != "" {
-										route = append(route, value.Region)
-									}
-									if len(value.Chains) > 0 {
-										route = append(route, value.Chains[0])
-									}
-								}
-								label := strings.Join(route, " · ")
-								if label == "" {
-									label = "—"
-								}
-								ui.Text(c, label).FontSize(fontSize(c, 13)).Height(17).TextColor(a.colors.muted).SingleLine()
+								a.serviceOutboundLine(c, target)
 							})
 							label, color := a.serviceStatus(target.ID, true)
 							ui.Text(c, label).FontSize(fontSize(c, 13)).FontWeight(600).TextColor(color).MaxWidth(190).Tooltip(label)
@@ -414,7 +451,7 @@ func (a *App) serviceBadge(c *ui.Context, target serviceTarget, status bool) {
 }
 
 func (a *App) sheetButton(c *ui.Context, icon, label string, action func()) ui.Element {
-	return ui.ButtonBase(c).Label(label).Tooltip(label).Size(44, 44).Radius(999).Background(a.colors.card).Center().OnClick(action).Children(func() { glyphVariant(c, icon, true).FontSize(24) })
+	return a.glassButton(c, ui.ButtonBase(c).Label(label).Tooltip(label).Size(44, 44).Radius(999).Background(a.colors.card).Center().OnClick(action).Children(func() { glyphVariant(c, icon, true).FontSize(24) }))
 }
 
 func (a *App) sheetHeader(c *ui.Context, title, icon, leadingLabel string, leading func(), actions func()) {

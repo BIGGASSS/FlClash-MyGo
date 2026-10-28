@@ -274,6 +274,9 @@ func (s *Store) restoreFiles(cfg Settings, files map[string][]byte) (Settings, e
 		return cfg, err
 	}
 	cfg.Active = ids[cfg.Active]
+	if err := remapFlutterSnapshot(&cfg, ids, resources); err != nil {
+		return cfg, err
+	}
 	if err := s.Save(cfg); err != nil {
 		return cfg, err
 	}

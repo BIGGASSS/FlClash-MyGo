@@ -22,6 +22,10 @@ type profileDetailState struct {
 }
 
 func (a *App) openProfileDetails() {
+	if p := a.store.ActiveProfile(a.cfg); p != nil && p.Type == "custom" {
+		a.openCustomProfileSheet(*p)
+		return
+	}
 	if a.store.ActiveProfile(a.cfg) == nil {
 		a.openProfilePicker()
 		return
@@ -41,6 +45,9 @@ func (a *App) closeProfileDetails() {
 	}
 	if a.profileCodeDirty() {
 		a.profileDetail.SavePrompt, a.profileDetail.PendingClose = true, true
+		return
+	}
+	if a.deferSheetClose("profile-details", a.closeProfileDetails) {
 		return
 	}
 	a.profileDetail.Serial++

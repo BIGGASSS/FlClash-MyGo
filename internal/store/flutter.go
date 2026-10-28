@@ -1,7 +1,7 @@
 package store
 
 // FlClash's archive format is versioned independently of this application's
-// settings. Read Drift snapshots without SQLite, cgo, or database migrations.
+// settings. Read Drift snapshots with pure-Go SQLite and no database migrations.
 import (
 	"bytes"
 	"context"
@@ -61,11 +61,7 @@ func (s *Store) importFlutter(files map[string][]byte) (Settings, map[string][]b
 		}
 	}
 	mapFlutterSettings(&cfg, source)
-	snapshot, err := json.Marshal(map[string]any{"config": source, "tables": tables})
-	if err != nil {
-		return cfg, nil, err
-	}
-	cfg.ImportSnapshot = snapshot
+	snapshot := flutterSnapshot{Config: source, Tables: tables, Profiles: map[string]string{}, Scripts: map[string]string{}, Resources: map[string]string{}, Overlays: map[string]string{}}
 	out := map[string][]byte{}
 	profileIDs, scriptIDs := map[string]string{}, map[string]string{}
 	proxyNames := map[string]string{}
@@ -92,7 +88,11 @@ func (s *Store) importFlutter(files map[string][]byte) (Settings, map[string][]b
 		if !ok {
 			return cfg, nil, fmt.Errorf("script %s is missing", String(row["label"]))
 		}
+		if !utf8.Valid(data) {
+			return cfg, nil, errors.New("FlClash script is not UTF-8")
+		}
 		cfg.Scripts = append(cfg.Scripts, Script{ID: id, Name: String(row["label"]), Source: string(data)})
+		snapshot.Scripts[id] = old
 	}
 	providerPaths := map[string]string{}
 	for _, row := range tables["clash_providers"] {
@@ -109,8 +109,16 @@ func (s *Store) importFlutter(files map[string][]byte) (Settings, map[string][]b
 		}
 		id := NewID()
 		cfg.Resources = append(cfg.Resources, id)
+		snapshot.Resources[id] = String(row["id"])
 		out["resources/"+id] = data
 		providerPaths[String(row["label"])] = resourceRef + id
+	}
+	paths := map[string]string{}
+	for old, id := range profileIDs {
+		paths["profiles/"+old+".yaml"] = profileRef + id
+	}
+	for id, old := range snapshot.Resources {
+		paths[flutterProviderEntry(old)] = resourceRef + id
 	}
 	for _, row := range orderedRows(tables["profiles"]) {
 		old := String(row["id"])
@@ -285,7 +293,17 @@ func (s *Store) importFlutter(files map[string][]byte) (Settings, map[string][]b
 				return cfg, nil, err
 			}
 		}
+		data, err = rewriteFlutterYAMLPaths(data, func(path string) (string, error) {
+			if mapped := paths[path]; mapped != "" {
+				return mapped, nil
+			}
+			return path, nil
+		})
+		if err != nil {
+			return cfg, nil, err
+		}
 		cfg.Profiles = append(cfg.Profiles, p)
+		snapshot.Profiles[p.ID], snapshot.Overlays[p.ID] = old, p.Override
 		out["profiles/"+p.ID+".yaml"] = data
 	}
 	cfg.Active = profileIDs[String(source["currentProfileId"])]
@@ -295,7 +313,11 @@ func (s *Store) importFlutter(files map[string][]byte) (Settings, map[string][]b
 	if p := s.ActiveProfile(cfg); p != nil {
 		cfg.Selected = p.Selected
 	}
-	return cfg, out, nil
+	cfg.ImportSnapshot, err = json.Marshal(snapshot)
+	if len(cfg.ImportSnapshot) > 32<<20 {
+		return cfg, nil, errors.New("FlClash import snapshot exceeds size limit")
+	}
+	return cfg, out, err
 }
 
 func (s *Store) readFlutterSQLite(data []byte) (tables flutterTables, err error) {
@@ -354,7 +376,7 @@ func (s *Store) readFlutterSQLite(data []byte) (tables flutterTables, err error)
 		return nil, err
 	}
 	tables = flutterTables{}
-	for _, name := range []string{"profiles", "scripts", "rules", "disabled_rules", "proxy_groups", "clash_providers", "custom_proxies", "proxy_dialers"} {
+	for _, name := range flutterTableNames {
 		if !existing[name] {
 			continue
 		}
@@ -526,6 +548,7 @@ func selectedFlutterOverrides(source map[string]any, sections []string, keepEmpt
 }
 
 func mapFlutterSettings(cfg *Settings, source map[string]any) {
+	importFlutterOnDemand(cfg, source)
 	for _, item := range flutterJSONList(source["hotKeyActions"]) {
 		row := flutterJSONMap(item)
 		if action, chord := String(row["action"]), flutterHotkey(row); action != "" && chord != "" {
@@ -570,6 +593,15 @@ func mapFlutterSettings(cfg *Settings, source map[string]any) {
 		}
 	}
 	theme := flutterJSONMap(source["themeProps"])
+	switch value := theme["liquidGlass"].(type) {
+	case bool:
+		cfg.LiquidGlass = "none"
+		if value {
+			cfg.LiquidGlass = "standard"
+		}
+	case string:
+		cfg.LiquidGlass = value
+	}
 	cfg.FontFamily = String(theme["systemFontFamily"])
 	if mode := String(theme["themeMode"]); mode != "" {
 		cfg.Theme = mode

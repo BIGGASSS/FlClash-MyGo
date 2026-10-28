@@ -1,0 +1,149 @@
+{
+  "source": "FlClash 7fd417fb9a9a277c6a9339a8ac87f907df7c25f7",
+  "flutter": "3.47.5",
+  "sortCases": [
+    {
+      "input": [],
+      "output": []
+    },
+    {
+      "input": [
+        " beta Serif ",
+        ".Hidden",
+        "",
+        "Alpha Sans",
+        "alpha sans",
+        "BETA SERIF",
+        " 日本語 ",
+        "École",
+        "école"
+      ],
+      "output": [
+        "Alpha Sans",
+        "beta Serif",
+        "École",
+        "日本語"
+      ]
+    },
+    {
+      "input": [
+        "Zulu",
+        "Roboto",
+        "Default",
+        "JetBrains Mono",
+        "\t",
+        ".AppleSystemUIFont"
+      ],
+      "output": [
+        "Default",
+        "JetBrains Mono",
+        "Roboto",
+        "Zulu"
+      ]
+    },
+    {
+      "input": [
+        "𐀀 Family",
+        " Family",
+        "😀 Family",
+        "日本語"
+      ],
+      "output": [
+        "日本語",
+        "𐀀 Family",
+        "😀 Family",
+        " Family"
+      ]
+    }
+  ],
+  "searchCases": [
+    {
+      "families": [
+        "Alpha Sans",
+        "beta Serif",
+        "École",
+        "日本語"
+      ],
+      "query": "",
+      "defaultLabel": "Default",
+      "output": [
+        "",
+        "Alpha Sans",
+        "beta Serif",
+        "École",
+        "日本語"
+      ]
+    },
+    {
+      "families": [
+        "Alpha Sans",
+        "beta Serif",
+        "École",
+        "日本語"
+      ],
+      "query": " SANS \t alPha ",
+      "defaultLabel": "Default",
+      "output": [
+        "Alpha Sans"
+      ]
+    },
+    {
+      "families": [
+        "Alpha Sans",
+        "beta Serif",
+        "École",
+        "日本語"
+      ],
+      "query": "DEFA",
+      "defaultLabel": "Default",
+      "output": [
+        ""
+      ]
+    },
+    {
+      "families": [
+        "Alpha Sans",
+        "beta Serif",
+        "École",
+        "日本語"
+      ],
+      "query": "  日本 ",
+      "defaultLabel": "Default",
+      "output": [
+        "日本語"
+      ]
+    },
+    {
+      "families": [
+        "Alpha Sans",
+        "beta Serif",
+        "École",
+        "日本語"
+      ],
+      "query": "missing",
+      "defaultLabel": "Default",
+      "output": []
+    },
+    {
+      "families": [
+        "Alpha Sans",
+        "beta Serif",
+        "École",
+        "日本語"
+      ],
+      "query": "Installed fonts",
+      "defaultLabel": "Default",
+      "output": []
+    },
+    {
+      "families": [
+        "日本語"
+      ],
+      "query": "默认",
+      "defaultLabel": "默认",
+      "output": [
+        ""
+      ]
+    }
+  ]
+}

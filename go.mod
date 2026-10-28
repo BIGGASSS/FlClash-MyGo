@@ -8,6 +8,8 @@ require (
 	github.com/ebitengine/purego v0.11.1
 	github.com/egoist/mygo v0.7.2-0.20261027143928-41ec785c253c
 	github.com/go-text/typesetting v0.3.5
+	github.com/piglig/go-qr v0.2.6
+	github.com/rivo/uniseg v0.4.7
 	github.com/tetratelabs/wazero v1.9.0
 	go.yaml.in/yaml/v3 v3.0.5
 	golang.org/x/image v0.46.0

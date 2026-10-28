@@ -92,6 +92,7 @@ type Settings struct {
 	ColorStyle            string            `json:"colorStyle"`
 	FontFamily            string            `json:"fontFamily,omitempty"`
 	PureBlack             bool              `json:"pureBlack"`
+	LiquidGlass           string            `json:"liquidGlass"`
 	Locale                string            `json:"locale"`
 	Scale                 float32           `json:"scale"`
 	Sidebar               bool              `json:"sidebar"`
@@ -100,6 +101,7 @@ type Settings struct {
 	CloseToTray           bool              `json:"closeToTray"`
 	StartHidden           bool              `json:"startHidden"`
 	AutoStart             bool              `json:"autoStart"`
+	ExcludeSSIDs          []string          `json:"excludeSSIDs"`
 	LaunchAtLogin         bool              `json:"launchAtLogin"`
 	OpenLogs              bool              `json:"openLogs"`
 	ProxyColumns          int               `json:"proxyColumns"`
@@ -144,7 +146,7 @@ func Defaults() Settings {
 	_ = json.Unmarshal(assets.Read("filters.json"), &filters)
 	return Settings{
 		Filters: filters, DashboardWidgets: DefaultDashboardWidgets(),
-		Version: 1, Theme: "system", Accent: "#007aff", ColorStyle: "vivid", Scale: 1,
+		Version: 1, Theme: "system", Accent: "#007aff", ColorStyle: "vivid", LiquidGlass: "none", Scale: 1,
 		Sidebar: true, FloatingNavigation: true, CloseToTray: true, CloseConnections: true, SystemProxy: true, BypassPrivateRoute: true, ProxyStyle: "list", ProxyLayout: "standard", ProxyCard: "standard", ProxyIcon: "filled", ProxySort: "default",
 		TestURL: DefaultTestURL, TestTimeout: 8000, WindowWidth: 1200, WindowHeight: 800,
 		Bypass:   "localhost,127.*,10.*,172.16.*,192.168.*,<local>",

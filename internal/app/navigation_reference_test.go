@@ -86,6 +86,7 @@ func TestNativeNavigationReferenceScreens(t *testing.T) {
 					})
 					a.sidebarOverlayView(c)
 				}, width, height)
+				tt.Advance(time.Second)
 				if name == "sidebar-overlay" {
 					if err := tt.Click(a.t("showMore")); err != nil {
 						t.Fatal(err)

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 
@@ -57,13 +58,58 @@ func TestServiceResultsCannotOverwriteNewerChecks(t *testing.T) {
 		t.Fatal("answer from a previous route was accepted")
 	}
 	a.services = append(a.services, Service{Name: "youtube", Status: "available", CheckedAt: 20})
-	a.applyServiceRouteCheck([]string{"github", "youtube"}, []uint64{4, 4}, []int64{10, 19}, []bool{true, false}, 4, 8)
+	a.applyServiceRouteCheck([]serviceRouteIdentity{{"github", 4, 10, 1}, {"youtube", 4, 19, 0}}, []bool{true, false}, 4, 8)
 	if a.serviceValue("github").RouteVersion != 8 || a.serviceValue("youtube") == nil {
 		t.Fatal("route check overwrote a newer service result")
 	}
-	a.applyServiceRouteCheck([]string{"github"}, []uint64{4}, []int64{10}, []bool{true}, 5, 1)
+	a.applyServiceRouteCheck([]serviceRouteIdentity{{"github", 4, 10, 1}}, []bool{true}, 5, 1)
 	if a.serviceValue("github") != nil {
 		t.Fatal("previous-core result survived a core restart")
+	}
+}
+
+func TestServiceRouteCheckUsesRequestIdentityEvenAtEqualCheckedTime(t *testing.T) {
+	a := testApp(t)
+	a.servicePending = map[string]uint64{"google": 1}
+	a.finishServices([]string{"google"}, 1, []Service{{Name: "google", Status: "available", CoreEpoch: 4, CheckedAt: 10}}, false)
+	a.servicePending["google"] = 2
+	a.finishServices([]string{"google"}, 2, []Service{{Name: "google", Status: "blocked", CoreEpoch: 4, CheckedAt: 10}}, false)
+	a.applyServiceRouteCheck([]serviceRouteIdentity{{"google", 4, 10, 1}}, []bool{false}, 4, 8)
+	if value := a.serviceValue("google"); value == nil || value.Status != "blocked" || value.RouteVersion != 0 {
+		t.Fatal("old route check invalidated a same-millisecond replacement", value)
+	}
+	a.applyServiceRouteCheck([]serviceRouteIdentity{{"google", 4, 10, 2}}, []bool{true}, 4, 8)
+	if a.serviceValue("google").RouteVersion != 8 {
+		t.Fatal("current request could not be verified")
+	}
+}
+
+func TestServiceRouteCheckCannotAffectReplacementCoreOwner(t *testing.T) {
+	a := testApp(t)
+	a.safe, a.page = false, "tools"
+	a.services = []Service{{Name: "google", Status: "available", CheckedAt: 10, CoreEpoch: 4}}
+	started, gate := make(chan struct{}, 1), make(chan struct{})
+	t.Cleanup(func() {
+		select {
+		case <-gate:
+		default:
+			close(gate)
+		}
+	})
+	a.engine = outboundTestEngine(t, func(method string, args json.RawMessage) any {
+		started <- struct{}{}
+		<-gate
+		return routeCheck{CoreEpoch: 5, RouteVersion: 8, Held: []bool{false}}
+	})
+	a.verifyServiceRoutes()
+	<-started
+	a.engine.mu.Lock()
+	a.engine.revision++
+	a.engine.mu.Unlock()
+	close(gate)
+	waitApp(t, a, func() bool { return a.working == 0 })
+	if a.serviceValue("google") == nil || a.serviceRouteRun || a.serviceRouteDue.IsZero() {
+		t.Fatal("stale owner discarded current service state or failed to recheck")
 	}
 }
 

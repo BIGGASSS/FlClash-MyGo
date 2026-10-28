@@ -159,6 +159,7 @@ func TestPopulatedNativeScreens(t *testing.T) {
 					a.cfg.Theme = "dark"
 				}
 				tt := ui.NewTester(a.View, width, height)
+				tt.Advance(time.Second)
 				if len(tt.Texts()) == 0 {
 					t.Fatal("empty populated screen")
 				}

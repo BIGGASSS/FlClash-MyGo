@@ -30,6 +30,8 @@ type providerFileProbe struct {
 	path    string
 	updated time.Time
 	kind    providerFileKind
+	remote  bool
+	state   *providerSyncState
 }
 
 func probeProviderFile(path string) providerFileKind {
@@ -57,7 +59,9 @@ func probeProviderFile(path string) providerFileKind {
 	return providerText
 }
 
-func (a *App) providerKey(p Provider) string { return a.cfg.Active + "\x00" + p.Type + "\x00" + p.Name }
+func (a *App) providerKey(p Provider) string {
+	return a.cfg.Active + "\x00" + p.Type + "\x00" + p.Name + "\x00" + p.Path
+}
 
 func (a *App) providerFile(p Provider) providerFileKind {
 	key := a.providerKey(p)
@@ -68,11 +72,16 @@ func (a *App) providerFile(p Provider) providerFileKind {
 	if probe == nil || probe.path != p.Path || !probe.updated.Equal(p.Updated) {
 		probe = &providerFileProbe{path: p.Path, updated: p.Updated}
 		a.providerFiles[key] = probe
+		cfg, s := store.Clone(a.cfg), a.store
 		go func() {
 			kind := probeProviderFile(p.Path)
+			remote := false
+			if p.Type == "Rule" && strings.EqualFold(p.Vehicle, "File") {
+				_, remote = s.RemoteRuleResource(cfg, p.Path)
+			}
 			a.update(func() {
 				if a.providerFiles[key] == probe {
-					probe.kind = kind
+					probe.kind, probe.remote = kind, remote
 				}
 			})
 		}()
@@ -179,7 +188,7 @@ func (a *App) profileDetailProvider(c *ui.Context, p Provider, index int) {
 				if m.Item(a.t("upload")).Disabled(a.safe).Chosen() {
 					a.importProvider(p)
 				}
-				if strings.EqualFold(p.Vehicle, "HTTP") && m.Item(a.t("sync")).Disabled(a.safe).Chosen() {
+				if (strings.EqualFold(p.Vehicle, "HTTP") || a.providerFiles[a.providerKey(p)].remote) && m.Item(a.t("sync")).Disabled(a.safe).Chosen() {
 					a.updateDetailProvider(p)
 				}
 				if info := p.Subscription; info != nil && info.Total > 0 {
@@ -286,9 +295,21 @@ func (a *App) saveProfileProvider() {
 	if client == nil {
 		return
 	}
-	p, data, serial, active := *state.Provider, []byte(state.Code.Buffer.String()), state.Serial, a.cfg.Active
+	p, data, serial, active, code := *state.Provider, []byte(state.Code.Buffer.String()), state.Serial, a.cfg.Active, state.Code
 	state.Saving = true
 	go func() {
+		prepared, prepareErr := store.PrepareResource(p.Path, data)
+		if prepareErr != nil {
+			a.update(func() {
+				if state.Serial == serial && state.Open && a.cfg.Active == active && a.engine == e && state.Code == code {
+					state.Saving = false
+					if providerClientCurrent(e, client, revision) && a.providerPathCurrent(p.Name, p.Path) {
+						a.err = prepareErr.Error()
+					}
+				}
+			})
+			return
+		}
 		ctx, cancel := context.WithTimeout(e.ctx, 30*time.Second)
 		defer cancel()
 		var message string
@@ -299,19 +320,27 @@ func (a *App) saveProfileProvider() {
 		if err == nil && e.Revision() != revision {
 			err = errors.New("provider save superseded by a config change")
 		}
-		if err == nil {
-			err = store.AtomicWrite(p.Path, data)
-		}
 		a.update(func() {
-			if state.Serial != serial || !state.Open || a.cfg.Active != active || a.engine != e {
+			defer prepared.Discard()
+			if state.Serial != serial || !state.Open || a.cfg.Active != active || a.engine != e || state.Code != code {
 				return
 			}
 			state.Saving = false
+			if !providerClientCurrent(e, client, revision) || !a.providerPathCurrent(p.Name, p.Path) {
+				return
+			}
+			if err == nil {
+				err = prepared.Commit()
+			}
 			if err != nil {
 				a.err = err.Error()
 				return
 			}
 			state.Original = string(data)
+			if code.Buffer.String() != string(data) {
+				state.PendingClose = false
+				return
+			}
 			if state.PendingClose {
 				a.closeProfileDetails()
 			} else {
@@ -357,64 +386,18 @@ func (a *App) detailProvidersUpdating() bool {
 }
 
 func (a *App) updateDetailProviders() {
-	for _, p := range a.sample.Providers {
-		a.updateDetailProvider(p)
-	}
+	a.updateProviderBatch(a.sample.Providers)
 }
 
 func (a *App) updateDetailProvider(p Provider) {
-	if a.safe || a.engine == nil {
-		return
-	}
-	key := a.providerKey(p)
-	if a.providerPending[key] != 0 {
-		return
-	}
-	e := a.engine
-	e.mu.Lock()
-	client, revision := e.client, e.revision
-	e.mu.Unlock()
-	if client == nil {
-		return
-	}
-	if a.providerPending == nil {
-		a.providerPending = map[string]uint64{}
-	}
-	a.providerSerial++
-	serial, active := a.providerSerial, a.cfg.Active
-	a.providerPending[key] = serial
-	go func() {
-		ctx, cancel := context.WithTimeout(e.ctx, 30*time.Second)
-		defer cancel()
-		var message string
-		err := client.Call(ctx, "updateExternalProviderAtPath", map[string]string{"providerName": p.Name, "provider-path": p.Path}, &message)
-		if err == nil && message != "" {
-			err = errors.New(message)
-		}
-		a.update(func() {
-			if a.providerPending[key] != serial {
-				return
-			}
-			delete(a.providerPending, key)
-			if a.cfg.Active != active || a.engine != e || e.Revision() != revision {
-				return
-			}
-			if err != nil {
-				a.err = p.Name + ": " + err.Error()
-			}
-		})
-	}()
+	a.updateProviderBatch([]Provider{p})
 }
 
 func (a *App) showProviderSubscription(p Provider) {
-	info := p.Subscription
-	if info == nil {
+	if p.Subscription == nil {
 		return
 	}
-	expire := a.t("infiniteTime")
-	if info.Expire != 0 {
-		expire = time.Unix(info.Expire, 0).Local().Format("2006-01-02")
-	}
-	a.detail = a.t("subscriptionInfo") + " · " + p.Name + "\n\n" + a.t("upload") + ": " + compactTraffic(info.Upload) + "\n" + a.t("download") + ": " + compactTraffic(info.Download) + "\n" + a.t("total") + ": " + compactTraffic(info.Total) + "\n" + a.t("expireTime") + ": " + expire
-	a.detailOpen = true
+	state := a.providerState()
+	copy := *p.Subscription
+	state.subscription, state.infoOpen = &copy, true
 }

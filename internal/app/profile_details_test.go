@@ -37,6 +37,7 @@ func TestProfileDetailsStayOnDashboardAndDismiss(t *testing.T) {
 		if err := tt.Click(label); err != nil {
 			t.Fatal(err)
 		}
+		tt.Advance(time.Second)
 		if !a.profileDetail.Open || a.page != "dashboard" || len(a.history) != 0 {
 			t.Fatal("profile details navigated away from dashboard", a.page, a.history)
 		}
@@ -49,12 +50,21 @@ func TestProfileDetailsStayOnDashboardAndDismiss(t *testing.T) {
 			t.Fatal("subscription usage differs", tt.Texts())
 		}
 		tt.Key(0, ui.KeyEscape)
+		if !a.profileDetail.Open {
+			t.Fatal("Escape disposed profile details before its exit")
+		}
+		tt.Advance(time.Second)
 		if a.profileDetail.Open {
 			t.Fatal("Escape did not dismiss profile sheet")
 		}
 		a.openProfileDetails()
 		tt.Frame()
+		tt.Advance(time.Second)
 		tt.ClickAt(100, 400)
+		if !a.profileDetail.Open {
+			t.Fatal("backdrop disposed profile details before its exit")
+		}
+		tt.Advance(time.Second)
 		if a.profileDetail.Open || a.page != "dashboard" {
 			t.Fatal("backdrop did not dismiss without changing the page")
 		}
@@ -71,6 +81,7 @@ func TestProfileRuntimePreviewUsesAssemblyAndNestedNavigation(t *testing.T) {
 	a.cfg.Overrides["mixed-port"] = 17890
 	a.openProfileDetails()
 	tt := ui.NewTester(a.View, 1200, 800)
+	tt.Advance(time.Second)
 	if err := tt.Click(a.t("runtimeConfig")); err != nil || !a.profileDetail.Preview {
 		t.Fatal("preview did not start", err)
 	}
@@ -100,6 +111,10 @@ func TestProfileRuntimePreviewUsesAssemblyAndNestedNavigation(t *testing.T) {
 		t.Fatal("Escape did not pop preview within the sheet")
 	}
 	tt.Key(0, ui.KeyEscape)
+	if !a.profileDetail.Open {
+		t.Fatal("Escape disposed root sheet before its exit")
+	}
+	tt.Advance(time.Second)
 	if a.profileDetail.Open {
 		t.Fatal("Escape did not close root sheet")
 	}
@@ -137,6 +152,7 @@ func TestProfileSheetActionsClearNativeCaptionButtons(t *testing.T) {
 	a.openProfileDetails()
 	tt := ui.NewTester(a.View, 1200, 800)
 	tt.SetTitleBar(ui.TitleBar{Height: 44, Right: 216})
+	tt.Advance(time.Second)
 	r, ok := tt.Find(a.t("runtimeConfig"))
 	if !ok || r.X+r.W > 1200-216 {
 		t.Fatal("runtime preview overlaps native caption buttons", r)

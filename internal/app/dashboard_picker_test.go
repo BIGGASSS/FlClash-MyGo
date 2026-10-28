@@ -17,15 +17,21 @@ func TestCompactPickerBoundsAndSnapDrag(t *testing.T) {
 	a := populatedApp(t)
 	a.openProfilePicker()
 	tt := ui.NewTester(func(c *ui.Context) { a.theme(c); ui.Box(c).Fill().Background(a.colors.page); a.dashboardPickerSheet(c) }, 560, 800)
+	tt.Advance(time.Second)
 	r, found := tt.Find("Example")
 	if !found || r.X != 16 || r.Y != 418 || r.W != 528 || r.H != 64 {
 		t.Fatal("compact profile bounds differ from source", r)
 	}
-	if err := tt.Click(a.t("close")); err != nil || a.picker.Open {
-		t.Fatal("compact close was intercepted by drag", err)
+	if err := tt.Click(a.t("close")); err != nil || !a.picker.Open {
+		t.Fatal("compact close was intercepted or disposed its owner before exit", err)
+	}
+	tt.Advance(time.Second)
+	if a.picker.Open {
+		t.Fatal("compact close did not finish its exit")
 	}
 	a.openProxyPicker("")
 	tt.Frame()
+	tt.Advance(time.Second)
 	query, found := tt.Find(a.t("search"))
 	if !found || query.X != 16 || query.Y != 736 || query.W != 528 || query.H != 48 {
 		t.Fatal("compact search is not docked", query)
@@ -51,6 +57,7 @@ func TestCompactPickerBoundsAndSnapDrag(t *testing.T) {
 	tt.Advance(16 * time.Millisecond)
 	tt.Move(280, 787)
 	tt.Release(280, 787)
+	tt.Advance(time.Second)
 	if a.picker.Open {
 		t.Fatal("downward throw did not dismiss sheet")
 	}
@@ -76,6 +83,7 @@ func TestDashboardProfilePickerRetainsPageAndSelection(t *testing.T) {
 	a.cfg.Profiles = append(a.cfg.Profiles, store.Profile{ID: "second", Name: "Second profile"})
 	a.openProfilePicker()
 	tt := ui.NewTester(a.View, 1200, 800)
+	tt.Advance(time.Second)
 	if err := tt.Click("Second profile"); err != nil {
 		t.Fatal(err)
 	}
@@ -86,12 +94,21 @@ func TestDashboardProfilePickerRetainsPageAndSelection(t *testing.T) {
 		t.Fatal("dashboard was unmounted")
 	}
 	tt.Key(0, ui.KeyEscape)
+	if !a.picker.Open {
+		t.Fatal("Escape disposed picker before its exit")
+	}
+	tt.Advance(time.Second)
 	if a.picker.Open || a.page != "dashboard" {
 		t.Fatal("Escape did not dismiss picker")
 	}
 	a.openProfilePicker()
 	tt.Frame()
+	tt.Advance(time.Second)
 	tt.ClickAt(100, 400)
+	if !a.picker.Open {
+		t.Fatal("backdrop disposed picker before its exit")
+	}
+	tt.Advance(time.Second)
 	if a.picker.Open {
 		t.Fatal("backdrop did not dismiss picker")
 	}
@@ -106,6 +123,7 @@ func TestDashboardProxyPickerRestoresPageSearchAndScroll(t *testing.T) {
 			a.proxyScroll.Y = 137
 			a.openProxyPicker("Streaming")
 			tt := ui.NewTester(a.View, 1200, 800)
+			tt.Advance(time.Second)
 			if a.page != "dashboard" || a.group != "Streaming" || a.picker.Proxy.proxyQuery != "" || a.picker.Proxy.proxySearch {
 				t.Fatal("picker did not isolate search")
 			}
@@ -115,16 +133,26 @@ func TestDashboardProxyPickerRestoresPageSearchAndScroll(t *testing.T) {
 			if err := tt.Click(a.t("search")); err != nil {
 				t.Fatal(err)
 			}
-			a.picker.Proxy.proxyQuery = "Japan"
-			tt.Frame()
+			// Focus the newly opened field and exercise its real native input.
+			if err := tt.Click(a.t("search")); err != nil {
+				t.Fatal(err)
+			}
+			tt.Type("Japan")
+			if a.picker.Proxy.proxyQuery != "Japan" {
+				t.Fatal("picker search did not take keyboard focus", a.picker.Proxy.proxyQuery)
+			}
 			if !tt.HasText("Japan 01") {
 				t.Fatal("picker search did not use proxy query")
 			}
 			tt.Key(0, ui.KeyEscape)
 			if !a.picker.Open || a.picker.Proxy.proxyQuery != "" {
-				t.Fatal("search Escape should clear its query first")
+				t.Fatal("search Escape should clear its query first", a.picker.Open, a.picker.Proxy.proxyQuery, a.picker.Proxy.proxySearch)
 			}
 			tt.Key(0, ui.KeyEscape)
+			if !a.picker.Open {
+				t.Fatal("Escape disposed proxy picker before its exit")
+			}
+			tt.Advance(time.Second)
 			if a.picker.Open || a.proxyQuery != "old query" || !a.proxySearch || a.proxyScroll.Y != 137 || a.page != "dashboard" {
 				t.Fatal("picker did not restore page state", a.proxyQuery, a.proxyScroll.Y)
 			}
@@ -147,6 +175,7 @@ func TestProfileGridVirtualizesAndFollowsSourceColumns(t *testing.T) {
 	}
 	a.openProfilePicker()
 	tt := ui.NewTester(a.View, 1200, 800)
+	tt.Advance(time.Second)
 	if !tt.HasText("Profile 0") || tt.HasText("Profile 9999") || len(tt.Texts()) > 400 {
 		t.Fatal("profile picker is not virtualized", len(tt.Texts()))
 	}
@@ -190,6 +219,10 @@ func TestNativePickerReferenceScreens(t *testing.T) {
 					}
 				}
 				tt := ui.NewTester(view, width, 800)
+				tt.Advance(time.Second)
+				if a.picker.Open && a.snapSheet("dashboard-picker").Progress != 1 || a.profileDetail.Open && a.snapSheet("profile-details").Progress != 1 {
+					t.Fatal("reference captured an unsettled sheet")
+				}
 				if dir := os.Getenv("FLCLASH_SNAPSHOT_DIR"); dir != "" {
 					if err := os.MkdirAll(dir, 0755); err != nil {
 						t.Fatal(err)

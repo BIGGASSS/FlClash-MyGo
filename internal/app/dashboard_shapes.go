@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"math"
 	"sync"
-	"time"
 
 	"github.com/BIGGASSS/FlClash-MyGo/assets"
 	"github.com/egoist/mygo/ui"
@@ -19,40 +18,56 @@ func loadDashboardShapes() {
 
 func (a *App) dashboardStartControl(c *ui.Context, side float32) {
 	enabled := len(a.cfg.Profiles) > 0
-	label, icon := a.t("start"), "play"
+	label := a.t("start")
 	target := float32(0)
 	if a.wantRunning {
-		label, icon, target = a.t("stop"), "pause", 1
+		label, target = a.t("stop"), 1
+		if a.onDemandSuspended() {
+			label = a.t("suspended")
+		}
 	}
 	ui.Box(c.Key("start-stop")).Size(side, side).Shrink(0).Children(func() {
-		button := ui.ButtonBase(c).Label(label).Tooltip(label).Fill().Disabled(!enabled).OnClick(func() {
+		button := ui.ButtonBase(c).Label(label).Tooltip(label).Fill().Disabled(!enabled).FocusRing(false).OnClick(func() {
 			if !a.safe {
 				a.toggle()
 			}
 		})
-		ease := ui.CubicBezier(0.175, 0.885, 0.32, 1.275)
-		if !a.wantRunning {
-			ease = ui.CubicBezier(0.55, 0.055, 0.675, 0.19)
-		}
-		progress := button.AnimateWith("running", target, 450*time.Millisecond, ease)
+		state := ui.Local(button, "dashboard-morph", func() dashboardMorphState { return dashboardMorphState{} })
+		suspended := target == 1 && a.onDemandSuspended()
+		progress, glyphProgress := state.frame(c, target == 1, suspended)
+		button.HandleInput(func(e ui.InputEvent) bool {
+			if enabled {
+				state.press.input(e, side)
+			}
+			return false // Keep ButtonBase's pointer/keyboard activation and capture.
+		})
+		sx, sy, x, y := state.press.frame(c, side, enabled)
 		fill, ink := a.colors.accent, a.colors.onAccent
 		if !enabled {
 			fill, ink = a.colors.inset, a.colors.muted
 		}
-		overlay := float32(0)
-		if button.Focused() {
-			overlay = 0.1
-		} else if button.Hovered() {
-			overlay = 0.08
-		}
-		overlay = button.Animate("overlay", overlay, 150*time.Millisecond)
+		focused := enabled && button.Focused()
+		overlay := button.AnimateWith("overlay", dashboardOverlay(enabled, focused, button.Hovered()), dashboardStateDuration, ui.Linear)
 		fill = fill.Mix(ink, overlay)
-		ui.Box(c).Absolute().Left(0).Top(0).Size(side, side).PassThrough().Center().Draw(func(p *ui.Painter, r ui.Rect) {
-			if enabled {
-				p.Image(startShadow(r.W, progress, a.colors.accent), ui.Rect{X: r.X - 28, Y: r.Y - 28, W: r.W + 56, H: r.H + 56}, ui.Contain)
-			}
-			p.FillPath(dashboardShape("start", r, progress, progress*40), fill)
-		}).Children(func() { glyphVariant(c, icon, true).FontSize(side * 0.34).TextColor(ink) })
+		button.Children(func() {
+			ui.Box(c).Absolute().Left(0).Top(0).Size(side, side).Scale(sx, sy).Translate(x, y).PassThrough().Center().Draw(func(p *ui.Painter, r ui.Rect) {
+				if enabled {
+					p.Image(startShadow(r.W, progress, a.colors.accent), ui.Rect{X: r.X - startShadowMargin, Y: r.Y - startShadowMargin, W: r.W + 2*startShadowMargin, H: r.H + 2*startShadowMargin}, ui.Contain)
+				}
+				p.FillPath(dashboardShape("start", r, progress, progress*40), fill)
+				if focused {
+					p.StrokePath(dashboardFocusPath(r, progress), 2, a.colors.accent)
+				}
+			}).Children(func() {
+				if suspended {
+					glyphVariant(c, "wifiOff", true).FontSize(side * 0.34).TextColor(ink)
+				} else {
+					ui.Box(c).Size(side*0.34, side*0.34).Draw(func(p *ui.Painter, r ui.Rect) {
+						paintDashboardPlayPause(p, r, glyphProgress, ink)
+					})
+				}
+			})
+		})
 	})
 }
 

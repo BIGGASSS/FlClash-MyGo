@@ -74,6 +74,7 @@ func TestProviderDetailsPreviewAndUnsavedEditStayInSheet(t *testing.T) {
 	a.openProfileProvider(p, false, providerText)
 	waitApp(t, a, func() bool { return !a.profileDetail.Busy })
 	tt := ui.NewTester(a.View, 1200, 1000)
+	tt.Advance(time.Second)
 	if a.profileDetail.Code == nil || !a.profileDetail.Code.ReadOnly || a.profileDetail.Code.Buffer.String() != string(original) {
 		t.Fatal("provider tap did not load a read-only preview")
 	}
@@ -104,6 +105,109 @@ func TestProviderDetailsPreviewAndUnsavedEditStayInSheet(t *testing.T) {
 	}
 }
 
+func TestProfileDetailsDismissalKeepsProviderOwnerBehindDirtyAndSaveGuards(t *testing.T) {
+	for _, width := range []int{560, 1200} {
+		t.Run(number(width), func(t *testing.T) {
+			a := populatedApp(t)
+			a.safe, a.cfg.Disclaimer = false, true
+			path := filepath.Join(t.TempDir(), "provider.yaml")
+			original, changed := "payload: [original.example]\n", "payload: [changed.example]\n"
+			if err := os.WriteFile(path, []byte(original), 0600); err != nil {
+				t.Fatal(err)
+			}
+			started, release := make(chan struct{}), make(chan struct{})
+			t.Cleanup(func() {
+				select {
+				case <-release:
+				default:
+					close(release)
+				}
+			})
+			a.engine = providerTestClient(t, func(method string, _ json.RawMessage) any {
+				if method != "sideLoadExternalProvider" {
+					return "unexpected method"
+				}
+				close(started)
+				<-release
+				return ""
+			})
+			p := Provider{Name: "Owned provider", Path: path}
+			a.openProfileDetails()
+			a.openProfileProvider(p, true, providerText)
+			waitApp(t, a, func() bool { return !a.profileDetail.Busy })
+			tt := ui.NewTester(a.View, width, 800)
+			tt.Advance(time.Second)
+			code, provider, serial := a.profileDetail.Code, a.profileDetail.Provider, a.profileDetail.Serial
+			s := a.snapSheet("profile-details")
+			code.Buffer.Set(changed)
+			tt.Frame()
+			assertOwner := func() {
+				t.Helper()
+				if !a.profileDetail.Open || !a.profileDetail.Preview || a.profileDetail.Code != code || a.profileDetail.Provider != provider || a.profileDetail.Serial != serial || a.page != "dashboard" {
+					t.Fatal("dismissal released or replaced its provider owner")
+				}
+			}
+			tt.ClickAt(5, 100) // Backdrop dismisses the whole sheet, not the nested editor.
+			assertOwner()
+			if !a.profileDetail.SavePrompt || !a.profileDetail.PendingClose || s.Dismissing || s.DismissRequested || s.Progress != 1 {
+				t.Fatal("dirty guard hid the sheet before asking to save")
+			}
+			if err := tt.Click(a.t("cancel")); err != nil {
+				t.Fatal(err)
+			}
+			assertOwner()
+			if a.profileDetail.PendingClose || code.Buffer.String() != changed {
+				t.Fatal("cancel lost the dirty buffer or retained a pending dismissal")
+			}
+			tt.ClickAt(5, 100)
+			no, found := tt.Find(a.t("no"))
+			if !found {
+				t.Fatal("dirty prompt has no discard action")
+			}
+			// Find("Save") resolves the toolbar underneath the modal first.
+			// Click the prompt's trailing action in its 440-point panel,
+			// inside the 24-point padding, on the unique discard-action row.
+			tt.ClickAt(float32(width)/2+220-24-20, no.Y+no.H/2)
+			select {
+			case <-started:
+			case <-time.After(time.Second):
+				t.Fatal("guarded save did not start", a.profileDetail.SavePrompt, a.profileDetail.Saving, a.safe, a.err, tt.Texts())
+			}
+			assertOwner()
+			if !a.profileDetail.Saving || !a.profileDetail.PendingClose {
+				t.Fatal("save lost its pending root dismissal")
+			}
+			tt.ClickAt(5, 100)
+			tt.Key(0, ui.KeyEscape)
+			tt.Advance(time.Second)
+			assertOwner()
+			if s.Dismissing || s.DismissRequested || s.Progress != 1 || a.profileDetail.SavePrompt {
+				t.Fatal("save guard began an exit or reopened the dirty prompt")
+			}
+			close(release)
+			waitApp(t, a, func() bool { return !a.profileDetail.Saving })
+			assertOwner()
+			if a.profileDetail.Original != changed || !s.DismissRequested {
+				t.Fatal("accepted save did not request an owned exit", a.err)
+			}
+			tt.Frame()
+			tt.Advance(50 * time.Millisecond)
+			assertOwner()
+			if !s.Dismissing || s.Progress <= 0 || s.Progress >= 1 {
+				t.Fatal("save completion skipped the sheet's exit")
+			}
+			tt.Advance(time.Second)
+			if a.profileDetail.Open || a.profileDetail.Code != nil || a.profileDetail.Provider != nil || a.profileDetail.Serial != serial+1 {
+				t.Fatal("finished exit did not release its provider owner once")
+			}
+			data, err := os.ReadFile(path)
+			if err != nil || string(data) != changed {
+				t.Fatal("guarded save did not preserve its accepted file", err)
+			}
+		})
+	}
+}
+
 func TestProviderDetailsListVirtualizesLargeCollections(t *testing.T) {
 	a := populatedApp(t)
 	for i := range 10000 {
@@ -111,6 +215,7 @@ func TestProviderDetailsListVirtualizesLargeCollections(t *testing.T) {
 	}
 	a.openProfileDetails()
 	tt := ui.NewTester(a.View, 1200, 1000)
+	tt.Advance(time.Second)
 	if len(a.providerFiles) > 100 {
 		t.Fatal("provider list eagerly built hidden rows", len(a.providerFiles))
 	}

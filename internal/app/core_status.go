@@ -52,6 +52,7 @@ func (a *App) coreStatusControl(c *ui.Context) {
 		}
 		a.confirmCoreRestart()
 	})
+	a.glassTintedButton(c, button, bg)
 	if phase == "connected" {
 		button.Width(44).Center()
 	} else {

@@ -531,7 +531,7 @@ func (a *App) proxyProviderRow(c *ui.Context, p Provider) {
 				a.button(c, "refresh", a.t("update")+" "+p.Name, func() { a.updateDetailProvider(p) })
 			}
 			a.button(c, "edit", a.t("edit")+" "+p.Name, func() { a.editProvider(p) }).Disabled(a.safe)
-			a.button(c, "info", a.t("details")+" "+p.Name, func() { a.showJSON(p.Name, p) })
+			a.button(c, "info", a.t("details")+" "+p.Name, func() { a.providerInfo(p) })
 			a.button(c, "down", a.t("import")+" "+p.Name, func() { a.importProvider(p) }).Disabled(a.safe).ContextMenu(func(m *ui.Menu) {
 				if m.Item(a.t("export")).Chosen() {
 					a.exportProvider(p)

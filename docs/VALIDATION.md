@@ -136,3 +136,73 @@ All 160 original palette cases pass with the added on-error role. The older
 320-case description was a counting error; ten seeds × four styles × two
 appearances × two pure-black states is 160. Full root tests/vet, real-core IPC,
 focused caption race checks and all six CGO-free UI builds pass at this checkpoint.
+
+## Continuation validation — 2026-10-28
+
+The latest continuation adds nested picker/editor ownership, sheet motion/input,
+source-derived wide dashboard/start-control geometry, service-node outbound and
+quality caching, remote rule synchronization, Wi-Fi exclusion support, native
+glass, font/MatchTarget pickers, QR sharing and explicit Flutter backup export.
+These implementations do **not** establish full desktop parity; `PARITY.md` and
+the feature notes retain their exact gaps.
+
+The tracked Linux runner `python3 tool/native/validate.py --phase all` reproduces
+the checks below without relying on ignored scripts. `--phase matrix`, `checks`
+and `smoke` select subsets; `--xvfb` selects an installed/extracted executable.
+It uses private workspace Go temporary directories and records commands/results
+and source fingerprints under ignored `build/validation-native`. It never installs
+system tooling or performs real workstation takeover. See the handoff for setup.
+
+A stable-source validation run passed all six `scripts/build.sh` targets (12
+UI/core executables), root tests/vet, core tests/vet both normally and with
+`with_gvisor`, and the real-process IPC/engine/provider/outbound loopback tests.
+Every production executable was built with `CGO_ENABLED=0`. The synthetic-SSID
+real-core test separately confirms parking preserves the IPC owner and manual
+stop intent, with proxy/TUN disabled and no workstation SSID queries.
+
+The tracked `tool/native/smoke.py` passes all 27 assertions on an owned Xvfb for
+both default and forced-CPU renderers. It now scales OCR inputs 2×, tries several
+exact-match segmentation modes, limits OCR threads, excludes the compact-sidebar
+icon from one title crop and follows Close→Preview's two-Tab focus order. The
+assertions, original window PNGs, temporary-data isolation and owned-process
+cleanup are retained. Native inspection also exposed a container-wide focus
+ring; the dialog container now suppresses that ring while controls retain their
+own keyboard focus indicators, with a dedicated pixel regression.
+
+Xvfb/xwininfo were hash/signature-verified from Arch repository packages and
+extracted under ignored `build/tooling`, not installed on the workstation. The
+renderer used CPU/llvmpipe fallback; this is not hardware-GPU evidence. No test
+changed the workstation proxy/TUN, used its display or terminated other apps.
+
+Focused race tests pass for picker/sheet/SSID/probe/quality/provider/font/QR/backup
+ownership. Supplemental native captures are generated under `build/screenshots-final`;
+matching affected images in `docs/screenshots` were refreshed. Font/QR/morph tests
+also cover minimum windows, focus/clipboard/privacy and reduced-motion behavior.
+On-demand form errors/controls are tested at 380 × 400 in all seven locales and
+at 100%/140%; this does not imply all-locale verification of every screen.
+
+Original-code reference evidence now includes:
+
+- Four successful original Flutter parser/`BackupAction.restore` tests on a
+  synthetic native export, using original DAOs/settings/file writes for parser,
+  compatible/override all-data and profiles-only restore. Metrics are retained
+  in `internal/store/testdata/flutter-backup-restore.json`.
+- Twenty-four exact original Dart QR module matrices, including Unicode ECI,
+  mask scoring and capacity boundaries.
+- Original intermediate/overshooting play-pause geometry, controller/reversal
+  timelines, press springs, focus ring and accessibility traces.
+- Original font sorting/search/selection behavior and four font-picker images.
+- 160 exact glass tint/platter color cases and four source fallback images.
+
+These supplemental references ran with available **Flutter 3.47.5**, whereas the
+source workflow pins **3.47.6**. The mismatch is explicit in fixtures/feature docs.
+Source images now total 112. Glass images are shader-unsupported fallback;
+fonts use synthetic aliases; restored binary resources are synthetic bytes, not
+MRS decoding evidence. Reference tests never start the original application,
+core or network-takeover managers.
+
+Real older Drift archives, all native/export combinations, original shader tiers,
+specialized forms/transitions, platform permission prompts, real macOS/Windows
+networking/tray/startup/sleep/elevation, signing/notarization and update delivery
+remain unverified or incomplete. All six cross-builds passing is not a substitute
+for those requirements.

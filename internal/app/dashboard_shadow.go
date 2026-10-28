@@ -8,6 +8,15 @@ import (
 	"golang.org/x/image/vector"
 )
 
+// Logical values from current_outbound.dart::_MorphPainter. The shadow and
+// focus ring are inside the paint-only ElasticPress transform.
+const (
+	startShadowMargin = 28
+	startShadowOffset = 6
+	startShadowSigma  = 7
+	startShadowAlpha  = .3
+)
+
 type startShadowKey struct {
 	side            int
 	progress, color uint32
@@ -31,8 +40,7 @@ func startShadow(side, progress float32, color ui.Color) *ui.Bitmap {
 		startShadows[key] = entry
 		return entry.bitmap
 	}
-	const margin = 28
-	size := key.side + margin*4
+	size := key.side + startShadowMargin*4
 	mask := image.NewAlpha(image.Rect(0, 0, size, size))
 	raster := vector.NewRasterizer(size, size)
 	dashboardShapesOnce.Do(loadDashboardShapes)
@@ -40,7 +48,7 @@ func startShadow(side, progress float32, color ui.Color) *ui.Bitmap {
 	point := func(x, y float32) (float32, float32) {
 		x, y = x-0.5, y-0.5
 		// The painter translates its shadow after rotating the unit shape.
-		y += 6 / side
+		y += startShadowOffset / side
 		return float32(size)/2 + (x*cos-y*sin)*float32(key.side), float32(size)/2 + (x*sin+y*cos)*float32(key.side)
 	}
 	for i, curve := range dashboardShapes["start0"] {
@@ -60,8 +68,8 @@ func startShadow(side, progress float32, color ui.Color) *ui.Bitmap {
 	raster.ClosePath()
 	raster.Draw(mask, mask.Bounds(), image.White, image.Point{})
 	// Flutter's mask sigma is shadowBlur/2 = 7 logical pixels.
-	const sigma = 14.0
-	const radius = 42
+	const sigma = 2.0 * startShadowSigma
+	const radius = int(3 * sigma)
 	var kernel [radius*2 + 1]float32
 	weight := float32(0)
 	for i := range kernel {
@@ -94,7 +102,7 @@ func startShadow(side, progress float32, color ui.Color) *ui.Bitmap {
 				}
 			}
 			at := y*pixels.Stride + x*4
-			pixels.Pix[at], pixels.Pix[at+1], pixels.Pix[at+2], pixels.Pix[at+3] = color.R, color.G, color.B, uint8(math.Round(float64(value*float32(color.A)/255*0.3)))
+			pixels.Pix[at], pixels.Pix[at+1], pixels.Pix[at+2], pixels.Pix[at+3] = color.R, color.G, color.B, uint8(math.Round(float64(value*float32(color.A)/255*startShadowAlpha)))
 		}
 	}
 	bitmap := ui.NewBitmap(pixels)

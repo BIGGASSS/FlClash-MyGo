@@ -122,3 +122,31 @@ navigation harness has fourteen (104 total). `profileCards` in each image's
 JSON sidecar contains measured original card bounds. Small-sheet images are
 captured 500 ms into presentation; their residual subpixel spring offset is
 visible in those bounds. Native static captures settle at the exact detent.
+
+## Supplemental continuation references
+
+Eight more source images (four font-picker and four glass-fallback states) bring
+`docs/reference` to 112 images. Additional numerical/behavior harnesses are:
+
+- `port_font_picker_test.dart`: original sort/search and picker behavior; see
+  `internal/app/font_picker.md` for synthetic font aliases and limitations.
+- `port_glass_test.dart`: 160 exact tint/platter colors and shader-unsupported
+  dock fallback images. It does not establish GPU/refraction parity.
+- `port_dashboard_morph_test.dart` plus `prepare_dashboard_morph.py`: unchanged
+  private source widget/painter timelines, rounded glyph paths, press springs,
+  focus and accessibility traces; see `internal/app/dashboard_morph.md`.
+- `port_profile_qr.dart`: 24 original `qr` encoder matrices, including ECI,
+  capacity and mask selection; see `internal/app/profile_share.md`.
+- `port_backup_test.dart`: original parser/generated models and actual
+  `BackupAction.restore` in compatible/override/profiles-only modes. Generate
+  synthetic input using `TestFlutterBackupReferenceFixture` with
+  `FLCLASH_FLUTTER_BACKUP_FIXTURE`; use the same variable for the Flutter test.
+  Retained metrics are `internal/store/testdata/flutter-backup-restore.json`.
+
+These continuation runs used the locally available **Flutter 3.47.5**, not the
+source workflow's **3.47.6**. Their fixtures/docs record the mismatch. All tests
+remain safe/isolated: no original app startup, system takeover or workstation
+preferences. Restore tests use owned temporary paths/in-memory databases and
+forbid HTTP; binary provider fixture bytes are synthetic, not MRS decode proof.
+Always restore both native asset-hook settings and remove copied/generated
+harness files from a disposable checkout after reference generation.

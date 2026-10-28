@@ -42,23 +42,23 @@ func (a *App) editProvider(p Provider) {
 	active := a.cfg.Active
 	a.work(func() (func(), error) {
 		data, err := readProviderFile(p.Path)
-		if err != nil {
-			return nil, err
-		}
-		if !utf8.Valid(data) || strings.ContainsRune(string(data), 0) {
-			var text string
+		binary := err == nil && (!utf8.Valid(data) || strings.ContainsRune(string(data), 0))
+		var text string
+		if binary {
 			ctx, cancel := context.WithTimeout(e.ctx, 30*time.Second)
 			defer cancel()
 			err = client.Call(ctx, "dumpRuleSet", p.Path, &text)
-			return func() {
-				if a.editorLoadSerial == serial && a.cfg.Active == active && a.engine == e && e.Revision() == revision {
-					a.detail = p.Name + "\n\n" + text
-					a.detailOpen = true
-				}
-			}, err
 		}
 		return func() {
-			if a.editorLoadSerial == serial && a.cfg.Active == active && a.engine == e && e.Revision() == revision {
+			if a.editorLoadSerial != serial || a.cfg.Active != active || a.engine != e || !providerClientCurrent(e, client, revision) || !a.providerPathCurrent(p.Name, p.Path) {
+				return
+			}
+			if err != nil {
+				a.err = err.Error()
+			} else if binary {
+				a.detail = p.Name + "\n\n" + text
+				a.detailOpen = true
+			} else {
 				a.openCode(p.Name, "provider:"+p.Name, string(data))
 				a.codeProvider.Path = p.Path
 			}
@@ -81,20 +81,31 @@ func (a *App) sideLoadProvider(name string, data []byte, done func(), paths ...s
 	if len(paths) > 0 {
 		path = paths[0]
 	}
+	active := a.cfg.Active
 	a.work(func() (func(), error) {
+		var prepared *store.PreparedResource
+		var err error
+		if path != "" {
+			prepared, err = store.PrepareResource(path, data)
+		}
 		ctx, cancel := context.WithTimeout(e.ctx, 30*time.Second)
 		defer cancel()
 		var message string
-		err := client.Call(ctx, "sideLoadExternalProvider", map[string]string{"providerName": name, "provider-path": path, "data-base64": base64.StdEncoding.EncodeToString(data)}, &message)
+		if err == nil {
+			err = client.Call(ctx, "sideLoadExternalProvider", map[string]string{"providerName": name, "provider-path": path, "data-base64": base64.StdEncoding.EncodeToString(data)}, &message)
+		}
 		if err == nil && message != "" {
 			err = errors.New(message)
 		}
-		if err == nil && path != "" {
-			err = store.AtomicWrite(path, data)
-		}
 		return func() {
-			if a.engine != e || e.Revision() != revision {
+			if prepared != nil {
+				defer prepared.Discard()
+			}
+			if a.engine != e || a.cfg.Active != active || !providerClientCurrent(e, client, revision) || !a.providerPathCurrent(name, path) {
 				return
+			}
+			if err == nil && prepared != nil {
+				err = prepared.Commit()
 			}
 			if err != nil {
 				a.err = err.Error()
@@ -107,9 +118,23 @@ func (a *App) sideLoadProvider(name string, data []byte, done func(), paths ...s
 		}, nil
 	})
 }
+func (a *App) providerPathCurrent(name, path string) bool {
+	for _, p := range a.sample.Providers {
+		if p.Name == name && p.Path != path {
+			return false
+		}
+	}
+	return true
+}
+
 func (a *App) importProvider(p Provider) {
 	if a.safe {
 		return
+	}
+	active, e := a.cfg.Active, a.engine
+	revision := uint64(0)
+	if e != nil {
+		revision = e.Revision()
 	}
 	go func() {
 		paths, err := mygo.Dialog.Open(mygo.OpenDialogOptions{Parent: a.window, Title: a.t("import"), Filters: []mygo.FileFilter{{Name: "Provider", Extensions: []string{"yaml", "yml", "txt", "mrs"}}}})
@@ -122,6 +147,14 @@ func (a *App) importProvider(p Provider) {
 		}
 		data, err := readProviderFile(paths[0])
 		a.update(func() {
+			if a.cfg.Active != active || a.engine != e || (e != nil && e.Revision() != revision) {
+				return
+			}
+			for _, current := range a.sample.Providers {
+				if current.Name == p.Name && current.Type == p.Type && current.Path != p.Path {
+					return
+				}
+			}
 			if err != nil {
 				a.err = err.Error()
 				return

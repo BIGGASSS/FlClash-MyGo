@@ -22,6 +22,20 @@ type navigationPageState struct {
 	ProfileTab                           int
 	ProfileDraft                         store.Profile
 	Document                             *documentEditor
+	FontPicker                           *fontPickerState
+}
+
+func (a *App) captureNavigationState() navigationPageState {
+	return navigationPageState{Page: a.page, History: slices.Clone(a.history), RecordQuery: a.recordQuery, RecordFilter: a.recordFilter, RecordSelected: a.recordSelected, Paused: a.paused, Code: a.code, CodeProvider: a.codeProvider, CodePurpose: a.codePurpose, CodeTitle: a.codeTitle, CodeOriginal: a.codeOriginal, EditProfile: a.editProfile, ProfileTab: a.profileTab, ProfileDraft: a.profileDraft, Document: a.document, FontPicker: a.fontPicker}
+}
+
+func (a *App) restoreNavigationState(state navigationPageState) {
+	a.page, a.history = state.Page, slices.Clone(state.History)
+	a.recordQuery, a.recordFilter, a.recordSelected, a.paused = state.RecordQuery, state.RecordFilter, state.RecordSelected, state.Paused
+	a.code, a.codePurpose, a.codeTitle, a.codeOriginal = state.Code, state.CodePurpose, state.CodeTitle, state.CodeOriginal
+	a.codeProvider = state.CodeProvider
+	a.fontPicker = state.FontPicker
+	a.editProfile, a.profileTab, a.profileDraft, a.document = state.EditProfile, state.ProfileTab, state.ProfileDraft, state.Document
 }
 
 func navigationPrimary(page string) bool {
@@ -79,6 +93,10 @@ func (a *App) navigationParent() string {
 }
 
 func (a *App) selectNavigation(page string) {
+	if a.picker.Open && !a.picker.BackgroundBuild {
+		a.requestPickerClose(func() { a.selectNavigation(page) })
+		return
+	}
 	current := a.navigationParent()
 	if current == page {
 		return
@@ -88,13 +106,9 @@ func (a *App) selectNavigation(page string) {
 		if a.navigationState == nil {
 			a.navigationState = map[string]navigationPageState{}
 		}
-		a.navigationState[current] = navigationPageState{Page: a.page, History: slices.Clone(a.history), RecordQuery: a.recordQuery, RecordFilter: a.recordFilter, RecordSelected: a.recordSelected, Paused: a.paused, Code: a.code, CodeProvider: a.codeProvider, CodePurpose: a.codePurpose, CodeTitle: a.codeTitle, CodeOriginal: a.codeOriginal, EditProfile: a.editProfile, ProfileTab: a.profileTab, ProfileDraft: a.profileDraft, Document: a.document}
+		a.navigationState[current] = a.captureNavigationState()
 		if prior, ok := a.navigationState[page]; ok {
-			a.page, a.history = prior.Page, slices.Clone(prior.History)
-			a.recordQuery, a.recordFilter, a.recordSelected, a.paused = prior.RecordQuery, prior.RecordFilter, prior.RecordSelected, prior.Paused
-			a.code, a.codePurpose, a.codeTitle, a.codeOriginal = prior.Code, prior.CodePurpose, prior.CodeTitle, prior.CodeOriginal
-			a.codeProvider = prior.CodeProvider
-			a.editProfile, a.profileTab, a.profileDraft, a.document = prior.EditProfile, prior.ProfileTab, prior.ProfileDraft, prior.Document
+			a.restoreNavigationState(prior)
 			a.activeNavigation = page
 			return
 		}

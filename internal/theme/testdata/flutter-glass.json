@@ -1,0 +1,808 @@
+{
+  "default": "none",
+  "legacyTrue": "standard",
+  "legacyFalse": "none",
+  "shaderFilters": false,
+  "colors": {
+    "#007aff/vivid/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#d8e2ffd9"
+    },
+    "#007aff/vivid/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#d8e2ffd9"
+    },
+    "#007aff/vivid/true/false": {
+      "regularTint": "#3435379e",
+      "pillTint": "#3435377a",
+      "platter": "#000d28d9"
+    },
+    "#007aff/vivid/true/true": {
+      "regularTint": "#27282a9e",
+      "pillTint": "#27282a7a",
+      "platter": "#000d28d9"
+    },
+    "#007aff/tinted/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#d8e2ffd9"
+    },
+    "#007aff/tinted/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#d8e2ffd9"
+    },
+    "#007aff/tinted/true/false": {
+      "regularTint": "#31353e9e",
+      "pillTint": "#31353e7a",
+      "platter": "#000d28d9"
+    },
+    "#007aff/tinted/true/true": {
+      "regularTint": "#2428329e",
+      "pillTint": "#2428327a",
+      "platter": "#000d28d9"
+    },
+    "#007aff/soft/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#dae2f9d9"
+    },
+    "#007aff/soft/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#dae2f9d9"
+    },
+    "#007aff/soft/true/false": {
+      "regularTint": "#3435379e",
+      "pillTint": "#3435377a",
+      "platter": "#060e1dd9"
+    },
+    "#007aff/soft/true/true": {
+      "regularTint": "#27282a9e",
+      "pillTint": "#27282a7a",
+      "platter": "#060e1dd9"
+    },
+    "#007aff/monochrome/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#e4e2e2d9"
+    },
+    "#007aff/monochrome/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#e4e2e2d9"
+    },
+    "#007aff/monochrome/true/false": {
+      "regularTint": "#3535359e",
+      "pillTint": "#3535357a",
+      "platter": "#0d0e0fd9"
+    },
+    "#007aff/monochrome/true/true": {
+      "regularTint": "#2828289e",
+      "pillTint": "#2828287a",
+      "platter": "#0d0e0fd9"
+    },
+    "#cb30e0/vivid/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#ffd6fcd9"
+    },
+    "#cb30e0/vivid/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#ffd6fcd9"
+    },
+    "#cb30e0/vivid/true/false": {
+      "regularTint": "#3734369e",
+      "pillTint": "#3734367a",
+      "platter": "#200025d9"
+    },
+    "#cb30e0/vivid/true/true": {
+      "regularTint": "#2a27299e",
+      "pillTint": "#2a27297a",
+      "platter": "#200025d9"
+    },
+    "#cb30e0/tinted/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#ffd6fcd9"
+    },
+    "#cb30e0/tinted/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#ffd6fcd9"
+    },
+    "#cb30e0/tinted/true/false": {
+      "regularTint": "#3c323b9e",
+      "pillTint": "#3c323b7a",
+      "platter": "#200025d9"
+    },
+    "#cb30e0/tinted/true/true": {
+      "regularTint": "#2e252e9e",
+      "pillTint": "#2e252e7a",
+      "platter": "#200025d9"
+    },
+    "#cb30e0/soft/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#f5dbf0d9"
+    },
+    "#cb30e0/soft/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#f5dbf0d9"
+    },
+    "#cb30e0/soft/true/false": {
+      "regularTint": "#3734369e",
+      "pillTint": "#3734367a",
+      "platter": "#170918d9"
+    },
+    "#cb30e0/soft/true/true": {
+      "regularTint": "#2a27299e",
+      "pillTint": "#2a27297a",
+      "platter": "#170918d9"
+    },
+    "#cb30e0/monochrome/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#e4e2e2d9"
+    },
+    "#cb30e0/monochrome/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#e4e2e2d9"
+    },
+    "#cb30e0/monochrome/true/false": {
+      "regularTint": "#3535359e",
+      "pillTint": "#3535357a",
+      "platter": "#0d0e0fd9"
+    },
+    "#cb30e0/monochrome/true/true": {
+      "regularTint": "#2828289e",
+      "pillTint": "#2828287a",
+      "platter": "#0d0e0fd9"
+    },
+    "#ff2d55/vivid/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#ffdadad9"
+    },
+    "#ff2d55/vivid/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#ffdadad9"
+    },
+    "#ff2d55/vivid/true/false": {
+      "regularTint": "#3934349e",
+      "pillTint": "#3934347a",
+      "platter": "#250205d9"
+    },
+    "#ff2d55/vivid/true/true": {
+      "regularTint": "#2d27279e",
+      "pillTint": "#2d27277a",
+      "platter": "#250205d9"
+    },
+    "#ff2d55/tinted/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#ffdadad9"
+    },
+    "#ff2d55/tinted/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#ffdadad9"
+    },
+    "#ff2d55/tinted/true/false": {
+      "regularTint": "#4231319e",
+      "pillTint": "#4231317a",
+      "platter": "#250205d9"
+    },
+    "#ff2d55/tinted/true/true": {
+      "regularTint": "#3524249e",
+      "pillTint": "#3524247a",
+      "platter": "#250205d9"
+    },
+    "#ff2d55/soft/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#ffdadad9"
+    },
+    "#ff2d55/soft/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#ffdadad9"
+    },
+    "#ff2d55/soft/true/false": {
+      "regularTint": "#3934349e",
+      "pillTint": "#3934347a",
+      "platter": "#1c0809d9"
+    },
+    "#ff2d55/soft/true/true": {
+      "regularTint": "#2d27279e",
+      "pillTint": "#2d27277a",
+      "platter": "#1c0809d9"
+    },
+    "#ff2d55/monochrome/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#e4e2e2d9"
+    },
+    "#ff2d55/monochrome/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#e4e2e2d9"
+    },
+    "#ff2d55/monochrome/true/false": {
+      "regularTint": "#3535359e",
+      "pillTint": "#3535357a",
+      "platter": "#0d0e0fd9"
+    },
+    "#ff2d55/monochrome/true/true": {
+      "regularTint": "#2828289e",
+      "pillTint": "#2828287a",
+      "platter": "#0d0e0fd9"
+    },
+    "#ff383c/vivid/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#ffdad7d9"
+    },
+    "#ff383c/vivid/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#ffdad7d9"
+    },
+    "#ff383c/vivid/true/false": {
+      "regularTint": "#3934339e",
+      "pillTint": "#3934337a",
+      "platter": "#250203d9"
+    },
+    "#ff383c/vivid/true/true": {
+      "regularTint": "#2d27269e",
+      "pillTint": "#2d27267a",
+      "platter": "#250203d9"
+    },
+    "#ff383c/tinted/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#ffdad7d9"
+    },
+    "#ff383c/tinted/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#ffdad7d9"
+    },
+    "#ff383c/tinted/true/false": {
+      "regularTint": "#42312f9e",
+      "pillTint": "#42312f7a",
+      "platter": "#250203d9"
+    },
+    "#ff383c/tinted/true/true": {
+      "regularTint": "#3424229e",
+      "pillTint": "#3424227a",
+      "platter": "#250203d9"
+    },
+    "#ff383c/soft/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#ffdad6d9"
+    },
+    "#ff383c/soft/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#ffdad6d9"
+    },
+    "#ff383c/soft/true/false": {
+      "regularTint": "#3934339e",
+      "pillTint": "#3934337a",
+      "platter": "#1c0807d9"
+    },
+    "#ff383c/soft/true/true": {
+      "regularTint": "#2d27269e",
+      "pillTint": "#2d27267a",
+      "platter": "#1c0807d9"
+    },
+    "#ff383c/monochrome/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#e4e2e2d9"
+    },
+    "#ff383c/monochrome/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#e4e2e2d9"
+    },
+    "#ff383c/monochrome/true/false": {
+      "regularTint": "#3535359e",
+      "pillTint": "#3535357a",
+      "platter": "#0d0e0fd9"
+    },
+    "#ff383c/monochrome/true/true": {
+      "regularTint": "#2828289e",
+      "pillTint": "#2828287a",
+      "platter": "#0d0e0fd9"
+    },
+    "#ff8d28/vivid/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#ffdcc5d9"
+    },
+    "#ff8d28/vivid/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#ffdcc5d9"
+    },
+    "#ff8d28/vivid/true/false": {
+      "regularTint": "#3834319e",
+      "pillTint": "#3834317a",
+      "platter": "#1c0900d9"
+    },
+    "#ff8d28/vivid/true/true": {
+      "regularTint": "#2b27249e",
+      "pillTint": "#2b27247a",
+      "platter": "#1c0900d9"
+    },
+    "#ff8d28/tinted/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#ffdcc5d9"
+    },
+    "#ff8d28/tinted/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#ffdcc5d9"
+    },
+    "#ff8d28/tinted/true/false": {
+      "regularTint": "#4132279e",
+      "pillTint": "#4132277a",
+      "platter": "#1c0900d9"
+    },
+    "#ff8d28/tinted/true/true": {
+      "regularTint": "#33251a9e",
+      "pillTint": "#33251a7a",
+      "platter": "#1c0900d9"
+    },
+    "#ff8d28/soft/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#ffdcc6d9"
+    },
+    "#ff8d28/soft/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#ffdcc6d9"
+    },
+    "#ff8d28/soft/true/false": {
+      "regularTint": "#3834319e",
+      "pillTint": "#3834317a",
+      "platter": "#1b0a01d9"
+    },
+    "#ff8d28/soft/true/true": {
+      "regularTint": "#2b27249e",
+      "pillTint": "#2b27247a",
+      "platter": "#1b0a01d9"
+    },
+    "#ff8d28/monochrome/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#e4e2e2d9"
+    },
+    "#ff8d28/monochrome/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#e4e2e2d9"
+    },
+    "#ff8d28/monochrome/true/false": {
+      "regularTint": "#3535359e",
+      "pillTint": "#3535357a",
+      "platter": "#0d0e0fd9"
+    },
+    "#ff8d28/monochrome/true/true": {
+      "regularTint": "#2828289e",
+      "pillTint": "#2828287a",
+      "platter": "#0d0e0fd9"
+    },
+    "#ffcc00/vivid/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#fde092d9"
+    },
+    "#ffcc00/vivid/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#fde092d9"
+    },
+    "#ffcc00/vivid/true/false": {
+      "regularTint": "#3734309e",
+      "pillTint": "#3734307a",
+      "platter": "#140d00d9"
+    },
+    "#ffcc00/vivid/true/true": {
+      "regularTint": "#2b27239e",
+      "pillTint": "#2b27237a",
+      "platter": "#140d00d9"
+    },
+    "#ffcc00/tinted/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#fde092d9"
+    },
+    "#ffcc00/tinted/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#fde092d9"
+    },
+    "#ffcc00/tinted/true/false": {
+      "regularTint": "#3b34249e",
+      "pillTint": "#3b34247a",
+      "platter": "#140d00d9"
+    },
+    "#ffcc00/tinted/true/true": {
+      "regularTint": "#2d27189e",
+      "pillTint": "#2d27187a",
+      "platter": "#140d00d9"
+    },
+    "#ffcc00/soft/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#f2e1bbd9"
+    },
+    "#ffcc00/soft/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#f2e1bbd9"
+    },
+    "#ffcc00/soft/true/false": {
+      "regularTint": "#3734309e",
+      "pillTint": "#3734307a",
+      "platter": "#140d00d9"
+    },
+    "#ffcc00/soft/true/true": {
+      "regularTint": "#2b27239e",
+      "pillTint": "#2b27237a",
+      "platter": "#140d00d9"
+    },
+    "#ffcc00/monochrome/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#e4e2e2d9"
+    },
+    "#ffcc00/monochrome/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#e4e2e2d9"
+    },
+    "#ffcc00/monochrome/true/false": {
+      "regularTint": "#3535359e",
+      "pillTint": "#3535357a",
+      "platter": "#0d0e0fd9"
+    },
+    "#ffcc00/monochrome/true/true": {
+      "regularTint": "#2828289e",
+      "pillTint": "#2828287a",
+      "platter": "#0d0e0fd9"
+    },
+    "#34c759/vivid/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#b3f2b3d9"
+    },
+    "#34c759/vivid/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#b3f2b3d9"
+    },
+    "#34c759/vivid/true/false": {
+      "regularTint": "#3435339e",
+      "pillTint": "#3435337a",
+      "platter": "#001203d9"
+    },
+    "#34c759/vivid/true/true": {
+      "regularTint": "#2728269e",
+      "pillTint": "#2728267a",
+      "platter": "#001203d9"
+    },
+    "#34c759/tinted/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#b3f2b3d9"
+    },
+    "#34c759/tinted/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#b3f2b3d9"
+    },
+    "#34c759/tinted/true/false": {
+      "regularTint": "#2e372e9e",
+      "pillTint": "#2e372e7a",
+      "platter": "#001203d9"
+    },
+    "#34c759/tinted/true/true": {
+      "regularTint": "#212a219e",
+      "pillTint": "#212a217a",
+      "platter": "#001203d9"
+    },
+    "#34c759/soft/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#d4e8d0d9"
+    },
+    "#34c759/soft/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#d4e8d0d9"
+    },
+    "#34c759/soft/true/false": {
+      "regularTint": "#3435339e",
+      "pillTint": "#3435337a",
+      "platter": "#031105d9"
+    },
+    "#34c759/soft/true/true": {
+      "regularTint": "#2728269e",
+      "pillTint": "#2728267a",
+      "platter": "#031105d9"
+    },
+    "#34c759/monochrome/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#e4e2e2d9"
+    },
+    "#34c759/monochrome/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#e4e2e2d9"
+    },
+    "#34c759/monochrome/true/false": {
+      "regularTint": "#3535359e",
+      "pillTint": "#3535357a",
+      "platter": "#0d0e0fd9"
+    },
+    "#34c759/monochrome/true/true": {
+      "regularTint": "#2828289e",
+      "pillTint": "#2828287a",
+      "platter": "#0d0e0fd9"
+    },
+    "#8e8e93/vivid/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#e5e2e4d9"
+    },
+    "#8e8e93/vivid/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#e5e2e4d9"
+    },
+    "#8e8e93/vivid/true/false": {
+      "regularTint": "#3535359e",
+      "pillTint": "#3535357a",
+      "platter": "#0e0e10d9"
+    },
+    "#8e8e93/vivid/true/true": {
+      "regularTint": "#2828289e",
+      "pillTint": "#2828287a",
+      "platter": "#0e0e10d9"
+    },
+    "#8e8e93/tinted/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#e5e2e4d9"
+    },
+    "#8e8e93/tinted/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#e5e2e4d9"
+    },
+    "#8e8e93/tinted/true/false": {
+      "regularTint": "#3535359e",
+      "pillTint": "#3535357a",
+      "platter": "#0e0e10d9"
+    },
+    "#8e8e93/tinted/true/true": {
+      "regularTint": "#2828289e",
+      "pillTint": "#2828287a",
+      "platter": "#0e0e10d9"
+    },
+    "#8e8e93/soft/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#dbe2f9d9"
+    },
+    "#8e8e93/soft/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#dbe2f9d9"
+    },
+    "#8e8e93/soft/true/false": {
+      "regularTint": "#3435379e",
+      "pillTint": "#3435377a",
+      "platter": "#060e1dd9"
+    },
+    "#8e8e93/soft/true/true": {
+      "regularTint": "#27282a9e",
+      "pillTint": "#27282a7a",
+      "platter": "#060e1dd9"
+    },
+    "#8e8e93/monochrome/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#e4e2e2d9"
+    },
+    "#8e8e93/monochrome/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#e4e2e2d9"
+    },
+    "#8e8e93/monochrome/true/false": {
+      "regularTint": "#3535359e",
+      "pillTint": "#3535357a",
+      "platter": "#0d0e0fd9"
+    },
+    "#8e8e93/monochrome/true/true": {
+      "regularTint": "#2828289e",
+      "pillTint": "#2828287a",
+      "platter": "#0d0e0fd9"
+    },
+    "#663399/vivid/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#f0dbffd9"
+    },
+    "#663399/vivid/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#f0dbffd9"
+    },
+    "#663399/vivid/true/false": {
+      "regularTint": "#3634379e",
+      "pillTint": "#3634377a",
+      "platter": "#170529d9"
+    },
+    "#663399/vivid/true/true": {
+      "regularTint": "#2a272a9e",
+      "pillTint": "#2a272a7a",
+      "platter": "#170529d9"
+    },
+    "#663399/tinted/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#f0dbffd9"
+    },
+    "#663399/tinted/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#f0dbffd9"
+    },
+    "#663399/tinted/true/false": {
+      "regularTint": "#38333c9e",
+      "pillTint": "#38333c7a",
+      "platter": "#170529d9"
+    },
+    "#663399/tinted/true/true": {
+      "regularTint": "#2c26309e",
+      "pillTint": "#2c26307a",
+      "platter": "#170529d9"
+    },
+    "#663399/soft/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#edddf6d9"
+    },
+    "#663399/soft/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#edddf6d9"
+    },
+    "#663399/soft/true/false": {
+      "regularTint": "#3634379e",
+      "pillTint": "#3634377a",
+      "platter": "#130a1cd9"
+    },
+    "#663399/soft/true/true": {
+      "regularTint": "#2a272a9e",
+      "pillTint": "#2a272a7a",
+      "platter": "#130a1cd9"
+    },
+    "#663399/monochrome/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#e4e2e2d9"
+    },
+    "#663399/monochrome/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#e4e2e2d9"
+    },
+    "#663399/monochrome/true/false": {
+      "regularTint": "#3535359e",
+      "pillTint": "#3535357a",
+      "platter": "#0d0e0fd9"
+    },
+    "#663399/monochrome/true/true": {
+      "regularTint": "#2828289e",
+      "pillTint": "#2828287a",
+      "platter": "#0d0e0fd9"
+    },
+    "#13579b/vivid/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#d5e3ffd9"
+    },
+    "#13579b/vivid/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#d5e3ffd9"
+    },
+    "#13579b/vivid/true/false": {
+      "regularTint": "#3435379e",
+      "pillTint": "#3435377a",
+      "platter": "#000e22d9"
+    },
+    "#13579b/vivid/true/true": {
+      "regularTint": "#27282a9e",
+      "pillTint": "#27282a7a",
+      "platter": "#000e22d9"
+    },
+    "#13579b/tinted/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#d5e3ffd9"
+    },
+    "#13579b/tinted/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#d5e3ffd9"
+    },
+    "#13579b/tinted/true/false": {
+      "regularTint": "#31353c9e",
+      "pillTint": "#31353c7a",
+      "platter": "#000e22d9"
+    },
+    "#13579b/tinted/true/true": {
+      "regularTint": "#23272f9e",
+      "pillTint": "#23272f7a",
+      "platter": "#000e22d9"
+    },
+    "#13579b/soft/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#d8e3f9d9"
+    },
+    "#13579b/soft/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#d8e3f9d9"
+    },
+    "#13579b/soft/true/false": {
+      "regularTint": "#3435379e",
+      "pillTint": "#3435377a",
+      "platter": "#040e1dd9"
+    },
+    "#13579b/soft/true/true": {
+      "regularTint": "#27282a9e",
+      "pillTint": "#27282a7a",
+      "platter": "#040e1dd9"
+    },
+    "#13579b/monochrome/false/false": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#e4e2e2d9"
+    },
+    "#13579b/monochrome/false/true": {
+      "regularTint": "#fdfdfd8a",
+      "pillTint": "#f4f4f493",
+      "platter": "#e4e2e2d9"
+    },
+    "#13579b/monochrome/true/false": {
+      "regularTint": "#3535359e",
+      "pillTint": "#3535357a",
+      "platter": "#0d0e0fd9"
+    },
+    "#13579b/monochrome/true/true": {
+      "regularTint": "#2828289e",
+      "pillTint": "#2828287a",
+      "platter": "#0d0e0fd9"
+    }
+  }
+}

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"os"
 	"time"
 
 	"github.com/BIGGASSS/FlClash-MyGo/internal/store"
@@ -75,6 +76,45 @@ func (a *App) profilesGridView(c *ui.Context, state *profileGridState, width flo
 	})
 }
 
+// Group counts are shared data, not navigation state. Stale file probes cannot
+// overwrite an invalidated entry after a structured/raw save.
+type profileGroupCount struct {
+	Updated time.Time
+	Count   int
+	Loaded  bool
+}
+
+func (a *App) profileGroupsCount(p store.Profile) (int, bool) {
+	if a.profileGroupCounts == nil {
+		a.profileGroupCounts = map[string]*profileGroupCount{}
+	}
+	entry := a.profileGroupCounts[p.ID]
+	if entry == nil || !entry.Updated.Equal(p.Updated) {
+		entry = &profileGroupCount{Updated: p.Updated}
+		a.profileGroupCounts[p.ID] = entry
+		s := a.store
+		go func() {
+			b, err := os.ReadFile(s.ProfilePath(p.ID))
+			var count int
+			if err == nil {
+				m, parseErr := store.ParseYAML(b)
+				err = parseErr
+				if err == nil {
+					if groups, ok := m["proxy-groups"].([]any); ok {
+						count = len(groups)
+					}
+				}
+			}
+			a.update(func() {
+				if a.profileGroupCounts[p.ID] == entry && err == nil {
+					entry.Count, entry.Loaded = count, true
+				}
+			})
+		}()
+	}
+	return entry.Count, entry.Loaded
+}
+
 func (a *App) profileGridItem(c *ui.Context, p store.Profile, width float32) {
 	b := ui.ButtonBase(c.Key(p.ID)).Label(p.Name).Fill().Radius(24).Selected(p.ID == a.cfg.Active).Background(a.colors.card).TextColor(a.colors.text).Padding(10, 16).OnClick(func() { a.activateProfile(p.ID) })
 	b.Children(func() {
@@ -117,7 +157,11 @@ func (a *App) profileGridItem(c *ui.Context, p store.Profile, width float32) {
 				ui.Text(c, label).FontSize(fontSize(c, 13)).FixedLineHeight(a.textHeight(18)).TextColor(a.colors.muted).SingleLine()
 			})
 			ui.Row(c).Gap(8).Children(func() {
-				if a.profileUpdating[p.ID] {
+				if p.Type == "custom" {
+					if count, ok := a.profileGroupsCount(p); ok {
+						ui.Text(c, compactNumber(count)).FontSize(fontSize(c, 12)).FixedLineHeight(a.textHeight(14)).FontWeight(600).Padding(2, 8).Radius(8).Background(a.colors.accent.Alpha(.15)).TextColor(a.colors.accent).Tooltip(a.messageText("proxyGroupsCount", map[string]any{"count": count, "label": compactNumber(count)}))
+					}
+				} else if a.profileUpdating[p.ID] {
 					loading(c, 24, a.colors.accent, a.t("loading"))
 				} else if p.Type != "custom" {
 					label := ""
@@ -137,17 +181,43 @@ func (a *App) profileGridItem(c *ui.Context, p store.Profile, width float32) {
 			return
 		}
 		if m.Item(a.t("edit")).Chosen() {
-			a.closeDashboardPicker()
-			a.profileDraft = p
-			a.editProfile = p.ID
-			a.profileTab = 0
-			a.goPage("profileEdit")
+			page := "profileEdit"
+			if p.Type == "custom" {
+				page = "profileCustom"
+			}
+			a.openProfileAction(p, page)
+		}
+		if p.Type == "custom" {
+			if m.Item(a.t("rename")).Chosen() {
+				a.openProfileAction(p, "profileRename")
+			}
+			if m.Item(a.t("runtimeConfig")).Chosen() {
+				a.previewPickerProfile(p)
+			}
+		} else {
+			if m.Item(a.t("extend")).Chosen() {
+				a.openProfileAction(p, "profileExtend")
+			}
 		}
 		if p.URL != "" && m.Item(a.t("sync")).Chosen() {
 			a.updateProfile(p)
 		}
-		if m.Item(a.t("exportFile")).Chosen() {
-			a.exportProfile(p)
+		if p.Type != "custom" {
+			m.Submenu(a.t("more"), func(sub *ui.Menu) {
+				if sub.Item(a.t("runtimeConfig")).Chosen() {
+					a.previewPickerProfile(p)
+				}
+				if p.URL != "" && sub.Item(a.t("copyLink")).Chosen() {
+					c.Services().WriteClipboard(p.URL)
+					a.message = a.t("copySuccess")
+				}
+				if profileShareable(p) && sub.Item(a.t("qrcode")).Chosen() {
+					a.openProfileShare(p)
+				}
+				if sub.Item(a.t("exportFile")).Chosen() {
+					a.exportProfile(p)
+				}
+			})
 		}
 		m.Separator()
 		if m.Item(a.t("delete")).Chosen() {

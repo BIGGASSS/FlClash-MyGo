@@ -214,5 +214,50 @@ At 600 points or below, these navigation sheets use full-width bottom sheets,
 a 68-point handle/header, the 9/16 initial detent and 90% maximum, header dragging,
 projected release and a source-derived throw limiter. The compact proxy picker
 docks its search at the foot. Eighteen additional original images bring the
-reference set to 104. Sheet presentation/dismissal animations, content-driven
-dragging/wheel integration and every nested picker action remain incomplete.
+reference set to 104. Subsequent work adds side-route enter/exit, bottom presentation springs,
+content-edge dragging and wheel latching, cancellation, retained exit ownership,
+profile-grid refitting, nested picker editing/custom/extend/runtime navigation,
+rename/link/QR sharing and MatchTarget selection. Dirty source edits are staged
+until guarded saves, preserve newer input and reject changed source snapshots.
+General fit-content measurement, source stack scaling/peek, content-fling inertia,
+control-started drag arbitration and nested transition fidelity remain incomplete.
+
+Service and dashboard outbound lookups share exit-target entries, captured IPC
+owners, request serials and route/version verification. Quality work coalesces by
+IP, cancels on owner/consumer changes and serializes private disk-cache writes.
+Network/resume observers invalidate host-dependent answers. Remote rule libraries
+retain metadata and original source resources separately from compiled files;
+workers capture request clients, compile to staged files and atomically replace
+only current identities, collecting bulk errors instead of silently discarding
+individual failures.
+
+On-demand exclusions project the user's run intent into an engine listener
+intent, without becoming another lifecycle owner. Read-only Linux netlink,
+Windows WLAN and macOS CoreWLAN readers are cancellable/bounded; safe mode never
+creates them. Permission failures remain explicit and do not invent transitions.
+Provider reconciles and outbound probes use the same projected intent. Desktop
+permission prompts and real-platform validation remain open.
+
+The font picker enumerates installed families off-thread, owns independent
+search/virtual-list/navigation state and previews visible families incrementally.
+QR sharing encodes the unchanged URL with the source's medium correction and
+mask scoring; 24 original Dart module matrices compare exactly. The new pure-Go
+pins are `github.com/piglig/go-qr` v0.2.6 (QR encoding) and
+`github.com/rivo/uniseg` v0.4.7 (extended-grapheme SSID validation). Their complete
+notices are retained; MyGo/mihomo pins are unchanged.
+
+Optional glass uses MyGo's vendored material with source-exact tint/platter
+colors and reduced-transparency/high-contrast fallback. Both saved enabled
+quality modes currently share that material, not the source's distinct shaders.
+See `GLASS.md`. Shared narrow/wide start controls use source-derived intermediate
+play/pause paths, curve/reversal fixtures, press springs, overlays and focus-ring
+geometry; Gaussian shadows/native AA remain approximations.
+
+Native backup remains the lossless native format. A separate Flutter v1/Drift v21
+export validates representability, paths, identities and quotas before returning
+credential-bearing bytes. Original parser/restore tests accepted a synthetic
+export with scripts, custom groups, rules, local resources and selections in
+compatible/override/profiles-only modes. Unsupported combinations fail rather
+than silently losing fields. These and the new glass/font/morph/QR references
+ran with available Flutter 3.47.5 rather than workflow-pinned 3.47.6. Real older
+archives and complete visual/platform parity remain unverified.
